@@ -1,5 +1,11 @@
 using Colyseus.Schema;
 
+/// <summary>
+/// Player state schema that defines the properties of a player in the game. This is used by
+/// Colyseus to synchronize the player state between the server and clients. Each property has a type and an index, 
+/// which is used for efficient serialization.The GameState class contains a map of player states and blob pickups, 
+/// which represent the current state of the game. The GameManager listens to these changes to update the scene accordingly.
+/// </summary>
 public partial class PlayerState : Schema
 {
     [Type(0, "string")] public string id = default;
@@ -16,6 +22,10 @@ public partial class PlayerState : Schema
     [Type(11, "float32")] public float invincibilityEndTime = default;
 }
 
+/// <summary>
+/// Blob pickup schema that defines the properties of a blob pickup item in the game. This is used by
+/// Colyseus to synchronize the blob pickup state between the server and clients.
+/// </summary>
 public partial class BlobPickup : Schema
 {
     [Type(0, "string")] public string id = default;
@@ -24,6 +34,10 @@ public partial class BlobPickup : Schema
     [Type(3, "float32")] public float value = default;
 }
 
+/// <summary>
+/// Game state schema that contains the overall state of the game, including the players and blob pickups.
+/// This is the main state object that the server updates and the clients listen to for changes.
+/// </summary>
 public partial class GameState : Schema
 {
     [Type(0, "map", typeof(MapSchema<PlayerState>))]
