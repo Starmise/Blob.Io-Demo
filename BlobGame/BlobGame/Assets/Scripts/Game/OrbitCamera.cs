@@ -6,7 +6,6 @@ using UnityEngine;
 /// </summary>
 public class OrbitCamera : MonoBehaviour
 {
-    public Transform target;
     public float distance = 12f;
     public float yAngle = 45f;
     public float xAngle = 0f;
@@ -14,8 +13,18 @@ public class OrbitCamera : MonoBehaviour
     public float minY = 10f;
     public float maxY = 80f;
 
+    private Transform target;
     private bool _canRotate = true;
     public void SetRotationEnabled(bool v) => _canRotate = v; // Disable camera rotation when the player dies, so they can see the death screen without the camera moving around.
+
+    void Start()
+    {
+        target = transform.parent;
+
+        // Only activate the camera for the local player (other players should not activate their camera)
+        var controller = transform.parent.GetComponent<PlayerController>();
+        gameObject.SetActive(controller != null && controller._isLocal);
+    }
 
     void LateUpdate()
     {

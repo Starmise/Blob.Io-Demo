@@ -30,7 +30,7 @@ public class GameManager : MonoBehaviour
         var room = NetworkManager.Instance.Room;
         var callbacks = Callbacks.Get(room);
 
-        // --- Players --------------------------------------------------------
+        // --- Players ---
         callbacks.OnAdd(state => state.players, (sessionId, player) =>
         {
             SpawnPlayer(sessionId, player);
@@ -45,7 +45,7 @@ public class GameManager : MonoBehaviour
             }
         });
 
-        // --- Blobs --------------------------------------------------------
+        // --- Blobs ---
         callbacks.OnAdd(state => state.blobs, (id, blob) =>
         {
             SpawnBlob(id, blob);
@@ -60,7 +60,19 @@ public class GameManager : MonoBehaviour
             }
         });
 
-        // --- Died Message ---------------------------------------------
+        // Spawn existing state manually
+        room.State.players.ForEach((sessionId, state) =>
+        {
+            SpawnPlayer(sessionId, state);
+        });
+        Debug.Log("Players in state: " + room.State.players.Count);
+
+        room.State.blobs.ForEach((id, blob) =>
+        {
+            SpawnBlob(id, blob);
+        });
+
+        // --- Died Message ---
         room.OnMessage<DiedMessage>("died", (msg) =>
         {
             UIManager.Instance.ShowDeathScreen(msg.killedBy, msg.finalScore);
@@ -80,7 +92,9 @@ public class GameManager : MonoBehaviour
     // Spawns a blob pickup in the scene based on the given ID and blob pickup state.
     void SpawnBlob(string id, BlobPickup blob)
     {
-        var go = Instantiate(blobPickupPrefab, new Vector3(blob.x, 0.2f, blob.z), Quaternion.identity);
+        float halfScale = blobPickupPrefab.transform.localScale.y * 0.5f;
+
+        var go = Instantiate(blobPickupPrefab, new Vector3(blob.x, halfScale, blob.z), Quaternion.identity);
         var view = go.GetComponent<BlobPickupView>();
         view.Init(blob);
         _blobs[id] = view;

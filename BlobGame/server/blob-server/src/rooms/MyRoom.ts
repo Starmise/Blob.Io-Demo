@@ -79,7 +79,7 @@ export class GameRoom extends Room {
       const dz   = p.z - blob.z;
       const dist = Math.sqrt(dx * dx + dz * dz);
       if (dist < p.size * 0.6 + blob.value * 0.3) {
-        p.size  += blob.value * 0.1;
+        p.size  += blob.value * 0.01;
         p.score += blob.value;
         this.state.blobs.delete(key);
         this.spawnBlobs(1);

@@ -57,6 +57,18 @@ public class NetworkManager : MonoBehaviour
 
         Debug.Log($"Joined room! SessionId: {Room.SessionId}");
 
+        var tcs = new TaskCompletionSource<bool>();
+
+        Room.OnStateChange += (state, isFirstState) =>
+        {
+            if (isFirstState)
+            {
+                tcs.TrySetResult(true);
+            }
+        };
+
+        await tcs.Task;
+
         SceneManager.LoadScene("Game");
     }
 

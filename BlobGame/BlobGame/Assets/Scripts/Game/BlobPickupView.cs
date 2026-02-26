@@ -10,6 +10,10 @@ public class BlobPickupView : MonoBehaviour
         float s = 0.1f + data.value * 0.06f;
         transform.localScale = Vector3.one * s;
 
+        Vector3 pos = transform.position;
+        pos.y = s * 0.5f;
+        transform.position = pos;
+
         var rend = GetComponentInChildren<MeshRenderer>();
         if (rend == null) return;
 

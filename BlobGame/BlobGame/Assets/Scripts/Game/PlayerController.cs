@@ -13,10 +13,10 @@ public class PlayerController : MonoBehaviour
     public MeshRenderer bodyRenderer;
     public Text nameLabel;
     public GameObject invincibilityEffect;
+    public bool _isLocal;
 
     private string _sessionId;
     private PlayerState _state;
-    private bool _isLocal;
     private Vector3 _targetPos;
 
     // Initializes the player controller with the given session ID, player state, and whether this is the local player.
