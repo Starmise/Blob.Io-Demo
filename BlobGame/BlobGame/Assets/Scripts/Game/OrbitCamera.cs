@@ -1,4 +1,5 @@
 using UnityEngine;
+using static UnityEngine.GraphicsBuffer;
 
 /// <summary>
 /// A simple orbit camera that rotates around a target object based on mouse input. The camera can
@@ -13,22 +14,22 @@ public class OrbitCamera : MonoBehaviour
     public float minY = 10f;
     public float maxY = 80f;
 
-    private Transform target;
+    private Transform _target;
     private bool _canRotate = true;
     public void SetRotationEnabled(bool v) => _canRotate = v; // Disable camera rotation when the player dies, so they can see the death screen without the camera moving around.
 
-    void Start()
+    public void Setup(Transform target, bool isLocal)
     {
         target = transform.parent;
 
         // Only activate the camera for the local player (other players should not activate their camera)
-        var controller = transform.parent.GetComponent<PlayerController>();
-        gameObject.SetActive(controller != null && controller._isLocal);
+        _target = target;
+        gameObject.SetActive(isLocal);
     }
 
     void LateUpdate()
     {
-        if (target == null) return;
+        if (_target == null) return;
 
         // Rotate the camera around the target based on mouse input when the right mouse button is held down.
         if (_canRotate && Input.GetMouseButton(1))
@@ -40,7 +41,7 @@ public class OrbitCamera : MonoBehaviour
 
         // Calculate the new position and rotation of the camera based on the angles and distance from the target.
         Quaternion rot = Quaternion.Euler(yAngle, xAngle, 0);
-        transform.position = target.position - rot * Vector3.forward * distance;
-        transform.LookAt(target.position + Vector3.up * 0.5f);
+        transform.position = _target.position - rot * Vector3.forward * distance;
+        transform.LookAt(_target.position + Vector3.up * 0.5f);
     }
 }

@@ -2,7 +2,7 @@ import { Room, Client } from "colyseus";
 import { GameState, PlayerState, BlobPickup } from "./schema/MyRoomState.js";
 
 const MAP_SIZE       = 50;
-const BASE_SPEED     = 8;
+const BASE_SPEED     = 1;
 const BLOB_COUNT     = 80;
 const INVINCIBLE_SEC = 10;
 const BLOB_VALUES    = [1, 2, 5, 10];

@@ -14,6 +14,7 @@ public class PlayerController : MonoBehaviour
     public Text nameLabel;
     public Text scoreLabel;
     public GameObject invincibilityEffect;
+    public OrbitCamera orbitCamera;
     public bool _isLocal;
 
     private string _sessionId;
@@ -37,6 +38,9 @@ public class PlayerController : MonoBehaviour
 
         // Initialize labels immediately
         UpdateLabels();
+
+        if (orbitCamera != null)
+            orbitCamera.Setup(transform, isLocal);
 
         /* I learned that in Colyseus 0.17, instead of using OnChange callbacks for state changes, we can just read
          the updated state directly in the Update method. The state object is automatically updated with the latest 
@@ -167,7 +171,7 @@ public class PlayerController : MonoBehaviour
         NetworkManager.Instance.SendMove(dir.x, dir.z);
 
         // Local movement for client-side prediction
-        float speed = 8f / (1 + (_state.size * 0.15f));
+        float speed = 1f / (1 + (_state.size * 0.15f));
         transform.position += new Vector3(dir.x, 0, dir.z) * speed * Time.deltaTime;
     }
 
