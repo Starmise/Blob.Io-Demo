@@ -751,7 +751,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 24eba30939e6fcb48b01196bcdaf2ea6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  serverAddress: ws://localhost:2567
+  serverAddress: wss://unparched-censurably-desmond.ngrok-free.dev
   LocalPlayerName: Player
   LocalPlayerColor: '#4488FF'
 --- !u!4 &573345443

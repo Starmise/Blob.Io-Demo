@@ -13,7 +13,7 @@ public class NetworkManager : MonoBehaviour
 {
     public static NetworkManager Instance;
 
-    public string serverAddress = "ws://localhost:2567";
+    public string serverAddress = "wss://unparched-censurably-desmond.ngrok-free.dev";
 
     public string LocalPlayerName = "Player";
     public string LocalPlayerColor = "#4488FF";
