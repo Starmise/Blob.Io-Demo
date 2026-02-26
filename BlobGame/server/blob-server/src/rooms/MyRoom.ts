@@ -29,7 +29,7 @@ export class GameRoom extends Room {
     p.color = options.color  || "#4488FF";
     p.x     = (Math.random() - 0.5) * MAP_SIZE; // Spawn in random position
     p.z     = (Math.random() - 0.5) * MAP_SIZE; // Y is fixed since it's a "top-down" game
-    p.y     = 0.5;
+    p.y     = 0;
     p.size  = 1;
     p.isAlive            = true;
     p.isInvincible       = true;

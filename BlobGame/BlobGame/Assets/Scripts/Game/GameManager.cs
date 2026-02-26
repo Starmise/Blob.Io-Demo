@@ -94,7 +94,7 @@ public class GameManager : MonoBehaviour
     {
         float halfScale = blobPickupPrefab.transform.localScale.y * 0.5f;
 
-        var go = Instantiate(blobPickupPrefab, new Vector3(blob.x, halfScale, blob.z), Quaternion.identity);
+        var go = Instantiate(blobPickupPrefab, new Vector3(blob.x, 0f, blob.z), Quaternion.identity);
         var view = go.GetComponent<BlobPickupView>();
         view.Init(blob);
         _blobs[id] = view;
