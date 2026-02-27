@@ -43,5 +43,9 @@ public class OrbitCamera : MonoBehaviour
         Quaternion rot = Quaternion.Euler(yAngle, xAngle, 0);
         transform.position = _target.position - rot * Vector3.forward * distance;
         transform.LookAt(_target.position + Vector3.up * 0.5f);
+
+        // Zoom with mouse wheel
+        distance -= Input.GetAxis("Mouse ScrollWheel") * 5f;
+        distance = Mathf.Clamp(distance, 3f, 30f);
     }
 }

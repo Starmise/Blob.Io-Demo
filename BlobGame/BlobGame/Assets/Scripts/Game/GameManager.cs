@@ -55,21 +55,14 @@ public class GameManager : MonoBehaviour
         {
             if (_blobs.TryGetValue(id, out var view))
             {
-                Destroy(view.gameObject);
+                if (view != null && view.gameObject != null)
+                {
+                    Debug.Log($"[DESTROYING] {view.gameObject.name} | active: {view.gameObject.activeSelf}");
+                    Destroy(view.gameObject);
+                    Debug.Log($"[DESTROYED]");
+                }
                 _blobs.Remove(id);
             }
-        });
-
-        // Spawn existing state manually
-        room.State.players.ForEach((sessionId, state) =>
-        {
-            SpawnPlayer(sessionId, state);
-        });
-        Debug.Log("Players in state: " + room.State.players.Count);
-
-        room.State.blobs.ForEach((id, blob) =>
-        {
-            SpawnBlob(id, blob);
         });
 
         // --- Died Message ---
@@ -82,6 +75,7 @@ public class GameManager : MonoBehaviour
     // Spawns a player in the scene based on the given session ID and player state.
     void SpawnPlayer(string sessionId, PlayerState state)
     {
+        Debug.Log($"[BLOB SPAWN] id: '{sessionId}'");
         var go = Instantiate(playerPrefab, new Vector3(state.x, state.y, state.z), Quaternion.identity);
         var ctrl = go.GetComponent<PlayerController>();
         bool isLocal = sessionId == NetworkManager.Instance.Room.SessionId;

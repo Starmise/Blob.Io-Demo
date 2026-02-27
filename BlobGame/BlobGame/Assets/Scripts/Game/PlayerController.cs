@@ -63,10 +63,6 @@ public class PlayerController : MonoBehaviour
         BillboardLabels();
     }
 
-    // --------------------------------------------------
-    // TRANSFORM LOGIC
-    // --------------------------------------------------
-
     /// <summary>
     /// Updates position and scale smoothly using interpolation
     /// based on the synchronized server state.
@@ -94,10 +90,6 @@ public class PlayerController : MonoBehaviour
             Vector3.one * targetScale,
             Time.deltaTime * 5f);
     }
-
-    // --------------------------------------------------
-    // LABEL LOGIC
-    // --------------------------------------------------
 
     /// <summary>
     /// Updates name and score labels using the latest state values.
@@ -169,10 +161,6 @@ public class PlayerController : MonoBehaviour
 
         // Send movement to server
         NetworkManager.Instance.SendMove(dir.x, dir.z);
-
-        // Local movement for client-side prediction
-        float speed = 1f / (1 + (_state.size * 0.15f));
-        transform.position += new Vector3(dir.x, 0, dir.z) * speed * Time.deltaTime;
     }
 
     /// <summary>
