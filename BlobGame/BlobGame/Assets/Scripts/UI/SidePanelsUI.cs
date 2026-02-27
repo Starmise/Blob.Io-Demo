@@ -57,4 +57,14 @@ public class SidePanelsUI : MonoBehaviour
         // Deshabilitar rotación de cámara mientras hay panel abierto
         orbitCamera?.SetRotationEnabled(false);
     }
+
+    public void CloseCurrentPanel()
+    {
+        if (_currentPanel != null)
+        {
+            _currentPanel.SetActive(false);
+            _currentPanel = null;
+            orbitCamera?.SetRotationEnabled(true);
+        }
+    }
 }
