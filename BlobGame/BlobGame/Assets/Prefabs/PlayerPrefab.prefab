@@ -271,7 +271,6 @@ GameObject:
   m_Component:
   - component: {fileID: 7780245594697124886}
   - component: {fileID: 2768765869108598854}
-  - component: {fileID: 4811067581232833739}
   - component: {fileID: 6514225592977997067}
   m_Layer: 0
   m_Name: Player Main Camera
@@ -346,14 +345,6 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!81 &4811067581232833739
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3603351698452609168}
-  m_Enabled: 1
 --- !u!114 &6514225592977997067
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -499,4 +490,5 @@ MonoBehaviour:
   nameLabel: {fileID: 7522082550976791175}
   scoreLabel: {fileID: 5106212960221102864}
   invincibilityEffect: {fileID: 0}
+  orbitCamera: {fileID: 6514225592977997067}
   _isLocal: 0
