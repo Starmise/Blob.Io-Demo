@@ -57,9 +57,7 @@ public class GameManager : MonoBehaviour
             {
                 if (view != null && view.gameObject != null)
                 {
-                    Debug.Log($"[DESTROYING] {view.gameObject.name} | active: {view.gameObject.activeSelf}");
                     Destroy(view.gameObject);
-                    Debug.Log($"[DESTROYED]");
                 }
                 _blobs.Remove(id);
             }
@@ -84,7 +82,7 @@ public class GameManager : MonoBehaviour
         // Asign OrbitCamera to SidePanelsUI only for local player.
         if (isLocal)
         {
-            var sidePanels = FindObjectOfType<SidePanelsUI>();
+            var sidePanels = FindAnyObjectByType<SidePanelsUI>();
             if (sidePanels != null)
                 sidePanels.orbitCamera = ctrl.GetComponentInChildren<OrbitCamera>();
         }

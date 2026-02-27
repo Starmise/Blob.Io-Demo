@@ -4,26 +4,26 @@ using System.Collections;
 
 public class SidePanelsUI : MonoBehaviour
 {
-    [Header("Botones laterales")]
+    [Header("Lateral Button")]
     public Button btnSkins;
     public Button btnDailyBonus;
     public Button btnLuckySpin;
     public Button btnGifts;
 
-    [Header("Paneles")]
+    [Header("Panels")]
     public GameObject skinsPanel;
     public GameObject dailyBonusPanel;
     public GameObject luckySpinPanel;
     public GameObject giftsPanel;
 
-    [Header("Referencias")]
+    [HideInInspector]
     public OrbitCamera orbitCamera;
 
     private GameObject _currentPanel;
 
     void Start()
     {
-        // Cerrar todos los paneles al inicio
+        // Close all panels at the start
         skinsPanel.SetActive(false);
         dailyBonusPanel.SetActive(false);
         luckySpinPanel.SetActive(false);
@@ -37,7 +37,7 @@ public class SidePanelsUI : MonoBehaviour
 
     void TogglePanel(GameObject panel)
     {
-        // Si el panel ya está abierto, cerrarlo
+        // Close the panel if is open
         if (_currentPanel == panel)
         {
             panel.SetActive(false);
@@ -46,15 +46,14 @@ public class SidePanelsUI : MonoBehaviour
             return;
         }
 
-        // Cerrar panel anterior si había uno
+        // In case there were already another panel, close it first
         if (_currentPanel != null)
             _currentPanel.SetActive(false);
 
-        // Abrir nuevo panel
+        // Open new panel
         _currentPanel = panel;
         panel.SetActive(true);
 
-        // Deshabilitar rotación de cámara mientras hay panel abierto
         orbitCamera?.SetRotationEnabled(false);
     }
 

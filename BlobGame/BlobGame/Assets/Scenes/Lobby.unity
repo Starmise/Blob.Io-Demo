@@ -576,8 +576,8 @@ MonoBehaviour:
   btnWebsite: {fileID: 1148436620}
   btnSettings: {fileID: 203695078}
   settingsPanel: {fileID: 518633569}
-  sliderVolume: {fileID: 0}
-  btnMute: {fileID: 0}
+  btnMusicMute: {fileID: 347268465}
+  btnMute: {fileID: 1671325413}
   txtMuteLabel: {fileID: 0}
   txtStartPrompt: {fileID: 828961995}
   nameInput: {fileID: 946277742}
@@ -1571,7 +1571,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.003921569, g: 0.54509807, b: 1, a: 0.5294118}
+  m_Color: {r: 0, g: 0, b: 0, a: 0.56078434}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -2686,7 +2686,6 @@ GameObject:
   m_Component:
   - component: {fileID: 7780245595983098558}
   - component: {fileID: 2768765867567572718}
-  - component: {fileID: 4811067582496971363}
   - component: {fileID: 6514225593189450659}
   m_Layer: 0
   m_Name: Player Main Camera
@@ -2758,14 +2757,6 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!81 &4811067582496971363
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3603351698400577080}
-  m_Enabled: 1
 --- !u!4 &4931122255915363493
 Transform:
   m_ObjectHideFlags: 0
