@@ -57,6 +57,11 @@ export class GameRoom extends Room {
       this.checkBlobPickups(p);
     });
     this.checkPlayerCollisions();
+
+    this.onMessage("setColor", (client, data: { color: string }) => {
+      const p = this.state.players.get(client.sessionId);
+      if (p) p.color = data.color;
+    });
   }
 
   // Handle player movement input

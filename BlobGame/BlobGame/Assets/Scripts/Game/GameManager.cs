@@ -75,12 +75,19 @@ public class GameManager : MonoBehaviour
     // Spawns a player in the scene based on the given session ID and player state.
     void SpawnPlayer(string sessionId, PlayerState state)
     {
-        Debug.Log($"[BLOB SPAWN] id: '{sessionId}'");
         var go = Instantiate(playerPrefab, new Vector3(state.x, state.y, state.z), Quaternion.identity);
         var ctrl = go.GetComponent<PlayerController>();
         bool isLocal = sessionId == NetworkManager.Instance.Room.SessionId;
         ctrl.Init(sessionId, state, isLocal);
         _players[sessionId] = ctrl;
+
+        // Asign OrbitCamera to SidePanelsUI only for local player.
+        if (isLocal)
+        {
+            var sidePanels = FindObjectOfType<SidePanelsUI>();
+            if (sidePanels != null)
+                sidePanels.orbitCamera = ctrl.GetComponentInChildren<OrbitCamera>();
+        }
     }
 
     // Spawns a blob pickup in the scene based on the given ID and blob pickup state.
