@@ -3,26 +3,21 @@
   [headers.values]
     Cross-Origin-Opener-Policy = "same-origin"
     Cross-Origin-Embedder-Policy = "require-corp"
-    [[headers]]
-  for = "/*.js.gz"
+
+[[headers]]
+  for = "/*.js.br"
   [headers.values]
-    Content-Encoding = "gzip"
+    Content-Encoding = "br"
     Content-Type = "application/javascript"
 
 [[headers]]
-  for = "/*.wasm.gz"
+  for = "/*.wasm.br"
   [headers.values]
-    Content-Encoding = "gzip"
+    Content-Encoding = "br"
     Content-Type = "application/wasm"
 
 [[headers]]
-  for = "/*.data.gz"
+  for = "/*.data.br"
   [headers.values]
-    Content-Encoding = "gzip"
+    Content-Encoding = "br"
     Content-Type = "application/octet-stream"
-
-[[headers]]
-  for = "/*"
-  [headers.values]
-    Cross-Origin-Opener-Policy = "same-origin"
-    Cross-Origin-Embedder-Policy = "require-corp"
