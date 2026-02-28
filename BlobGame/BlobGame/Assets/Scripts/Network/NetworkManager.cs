@@ -25,6 +25,11 @@ public class NetworkManager : MonoBehaviour
 
     private void Awake()
     {
+#if UNITY_EDITOR
+        serverAddress = "ws://localhost:2567";
+#else
+    serverAddress = "wss://unparched-censurably-desmond.ngrok-free.dev";
+#endif
         // Singleton pattern to ensure only one instance of NetworkManager exists and it persists across scenes.
         if (Instance == null)
         {
