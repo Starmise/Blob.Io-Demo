@@ -20,6 +20,7 @@ public class PlayerController : MonoBehaviour
     private string _sessionId;
     private PlayerState _state;
     private Vector3 _targetPos;
+    // private bool _deathHandled;
 
     /// <summary>
     /// Initializes the player controller with the given session ID, player state,
@@ -31,6 +32,7 @@ public class PlayerController : MonoBehaviour
         _state = state;
         _isLocal = isLocal;
         _targetPos = new Vector3(state.x, state.y, state.z);
+        // _deathHandled = false;
 
         Color color;
         if (ColorUtility.TryParseHtmlString(state.color, out color))
@@ -54,7 +56,10 @@ public class PlayerController : MonoBehaviour
 
         // Handle local input only for the local player
         if (_isLocal)
+        {
             HandleInput();
+            // CheckLocalDeath();
+        }
 
         // Update transform and visuals based on the latest synchronized state
         UpdateTransform();
@@ -69,7 +74,6 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     void UpdateTransform()
     {
-        // Interpolate position for smoother movement
         _targetPos = new Vector3(_state.x, _state.y, _state.z);
 
         transform.position = Vector3.Lerp(
@@ -77,17 +81,19 @@ public class PlayerController : MonoBehaviour
             _targetPos,
             Time.deltaTime * 15f);
 
-        // Scale player based on score (normalized growth)
-        const float MAX_SCORE = 500000f;
+        const float MAX_SCORE = 50000f;
         const float MIN_SCALE = 1f;
         const float MAX_SCALE = 10f;
 
         float t = Mathf.Clamp01((float)_state.score / MAX_SCORE);
         float targetScale = Mathf.Lerp(MIN_SCALE, MAX_SCALE, t);
 
+        // Breathing animation — subtle Y squish using a sine wave
+        float breathe = 1f + Mathf.Sin(Time.time * 2f) * 0.1f;
+
         transform.localScale = Vector3.Lerp(
             transform.localScale,
-            Vector3.one * targetScale,
+            new Vector3(targetScale, targetScale * breathe, targetScale),
             Time.deltaTime * 5f);
     }
 
@@ -129,13 +135,17 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     void UpdateVisualState()
     {
-        // Invincibility effect is shown when the player is invincible.
+        // Update color from server state (handles skin changes from other players)
+        Color color;
+        if (ColorUtility.TryParseHtmlString(_state.color, out color))
+        {
+            if (bodyRenderer.material.color != color)
+                bodyRenderer.material.color = color;
+        }
+
         if (invincibilityEffect != null)
             invincibilityEffect.SetActive(_state.isInvincible);
 
-        // Hide dead remote players.
-        // For the local player, we keep the GameObject active so we can
-        // show the death screen without destroying the player object.
         if (!_isLocal)
             gameObject.SetActive(_state.isAlive);
     }

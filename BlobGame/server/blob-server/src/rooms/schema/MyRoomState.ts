@@ -22,6 +22,7 @@ export class BlobPickup extends Schema {
   @type("float32") x: number = 0;
   @type("float32") z: number = 0;
   @type("float32") value: number = 1;
+  @type("boolean") isGolden: boolean = false;
 }
 
 // Define the overall game state schema

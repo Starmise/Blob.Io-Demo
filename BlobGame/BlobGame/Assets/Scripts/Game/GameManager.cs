@@ -66,8 +66,14 @@ public class GameManager : MonoBehaviour
         // --- Died Message ---
         room.OnMessage<DiedMessage>("died", (msg) =>
         {
+            Debug.Log($"[DEATH] Message received: killedBy={msg.killedBy}, score={msg.finalScore}");
             UIManager.Instance.ShowDeathScreen(msg.killedBy, msg.finalScore);
         });
+    }
+
+    public bool TryGetPlayer(string sessionId, out PlayerController controller)
+    {
+        return _players.TryGetValue(sessionId, out controller);
     }
 
     // Spawns a player in the scene based on the given session ID and player state.

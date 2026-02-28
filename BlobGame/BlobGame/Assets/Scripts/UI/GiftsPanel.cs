@@ -31,12 +31,13 @@ public class GiftsPanel : MonoBehaviour
     private bool[] _claimed;
     private float _sessionStart;
 
-    void Awake()
+    void Start()
     {
-        _claimed = new bool[gifts.Length];
+        // Timer starts when player joins the game, not when panel opens
         _sessionStart = Time.realtimeSinceStartup;
 
-        // Assign unlock times and rewards from arrays
+        _claimed = new bool[gifts.Length];
+
         for (int i = 0; i < gifts.Length && i < _unlockTimes.Length; i++)
         {
             gifts[i].unlockAfterSeconds = _unlockTimes[i];

@@ -7,13 +7,18 @@ public class BlobPickupView : MonoBehaviour
 {
     public void Init(BlobPickup data)
     {
-        float s = 0.1f + data.value * 0.06f;
+        float s = data.isGolden ? 0.4f : 0.1f + data.value * 0.06f;
         transform.localScale = Vector3.one * s;
 
         var rend = GetComponentInChildren<MeshRenderer>();
         if (rend == null) return;
 
-        // Set the color based on the value of the pickup. This is just an example, I can choose any colors I like.
+        if (data.isGolden)
+        {
+            rend.material.color = new Color(1f, 0.84f, 0f); // Golden color
+            return;
+        }
+
         rend.material.color = data.value switch
         {
             1 => Color.white,

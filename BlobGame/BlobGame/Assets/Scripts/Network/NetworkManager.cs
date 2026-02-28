@@ -18,6 +18,8 @@ public class NetworkManager : MonoBehaviour
     public string LocalPlayerName = "Player";
     public string LocalPlayerColor = "#4488FF";
 
+    public bool IsInGame { get; private set; } = false;
+
     public Client client;
     public Room<GameState> Room { get; private set; }
 
@@ -69,6 +71,7 @@ public class NetworkManager : MonoBehaviour
 
         await tcs.Task;
 
+        IsInGame = true;
         SceneManager.LoadScene("Game");
     }
 
@@ -84,6 +87,10 @@ public class NetworkManager : MonoBehaviour
             Room = null;
         }
 
+        if (!IsInGame) return;
+        IsInGame = false;
+        Room?.Leave();
+        Room = null;
         SceneManager.LoadScene("Lobby");
     }
 
