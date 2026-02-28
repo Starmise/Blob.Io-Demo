@@ -66,6 +66,7 @@ public class GameManager : MonoBehaviour
         // --- Died Message ---
         room.OnMessage<DiedMessage>("died", (msg) =>
         {
+            Debug.Log($"[DEATH] Message received: killedBy={msg.killedBy}, score={msg.finalScore}");
             UIManager.Instance.ShowDeathScreen(msg.killedBy, msg.finalScore);
         });
     }
