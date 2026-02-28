@@ -13,7 +13,7 @@ public class LobbyManager : MonoBehaviour
     public GameObject settingsPanel;
     public Button btnMusicMute;
     public Button btnMute;
-    public Text txtMuteLabel;
+    //public Text txtMuteLabel;
 
     [Header("Prompt and Name")]
     public Text txtStartPrompt;

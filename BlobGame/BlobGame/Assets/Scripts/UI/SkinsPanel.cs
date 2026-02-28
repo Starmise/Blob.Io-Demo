@@ -3,53 +3,75 @@ using UnityEngine.UI;
 
 public class SkinsPanel : MonoBehaviour
 {
-    [Header("Botones de color")]
-    public Button[] colorButtons;
-
-    // Colores disponibles
-    private string[] _colors = new string[]
+    [System.Serializable]
+    public class SkinEntry
     {
-        "#FFD700", // Amarillo (default)
-        "#FF4444", // Rojo
-        "#44AAFF", // Azul
-        "#44FF88", // Verde
-        "#FF44FF", // Morado
-        "#FF8844", // Naranja
-        "#FFFFFF", // Blanco
-        "#222222", // Negro
-    };
+        public Image skinPreview;  // Read color from this
+        public Button buyButton;
+        public int killCost = 3;
+    }
+
+    [Header("Skin entries (8 total)")]
+    public SkinEntry[] skins;
+
+    [Header("Feedback text")]
+    public Text txtFeedback;
 
     void Start()
     {
-        // Asignar color y listener a cada botón
-        for (int i = 0; i < colorButtons.Length && i < _colors.Length; i++)
+        for (int i = 0; i < skins.Length; i++)
         {
-            string hex = _colors[i];
-            Color color;
-            ColorUtility.TryParseHtmlString(hex, out color);
-
-            // Pintar el botón con el color que representa
-            colorButtons[i].GetComponent<Image>().color = color;
-
-            colorButtons[i].onClick.AddListener(() => SelectColor(hex));
+            int index = i;
+            skins[i].buyButton.onClick.AddListener(() => BuySkin(index));
         }
+        RefreshButtons();
     }
 
-    void SelectColor(string hex)
+    void BuySkin(int index)
     {
-        NetworkManager.Instance.LocalPlayerColor = hex;
+        var room = NetworkManager.Instance.Room;
+        if (room == null) return;
 
-        // Notificar al servidor
-        NetworkManager.Instance.Room?.Send("setColor", new { color = hex });
-
-        // Cambiar color visual del jugador local inmediatamente
-        var localPlayer = FindLocalPlayer();
-        if (localPlayer != null)
+        PlayerState local = null;
+        room.State.players.ForEach((id, state) =>
         {
-            Color color;
-            if (ColorUtility.TryParseHtmlString(hex, out color))
+            if (id == room.SessionId) local = state;
+        });
+
+        if (local == null) return;
+
+        SkinEntry skin = skins[index];
+
+        if (local.kills < skin.killCost)
+        {
+            if (txtFeedback != null)
+                txtFeedback.text = $"Not enough kills! Need {skin.killCost}.";
+            return;
+        }
+
+        // Instead of reading colorHex string, read from the preview image
+        Color skinColor = skin.skinPreview.color;
+        string hex = "#" + ColorUtility.ToHtmlStringRGB(skinColor);
+
+        NetworkManager.Instance.Room?.Send("buySkin", new
+        {
+            color = hex,
+            killCost = skin.killCost
+        });
+
+        // Apply color immediately on local player
+        Color color;
+        if (ColorUtility.TryParseHtmlString(hex, out color))
+        {
+            var localPlayer = FindLocalPlayer();
+            if (localPlayer != null)
                 localPlayer.bodyRenderer.material.color = color;
         }
+
+        if (txtFeedback != null)
+            txtFeedback.text = "Skin equipped!";
+
+        RefreshButtons();
     }
 
     PlayerController FindLocalPlayer()
@@ -58,4 +80,25 @@ public class SkinsPanel : MonoBehaviour
             if (p._isLocal) return p;
         return null;
     }
+
+    void RefreshButtons()
+    {
+        // Refresh button interactability based on kills (updated each time panel opens)
+        var room = NetworkManager.Instance?.Room;
+        if (room == null) return;
+
+        PlayerState local = null;
+        room.State.players.ForEach((id, state) =>
+        {
+            if (id == room.SessionId) local = state;
+        });
+
+        if (local == null) return;
+
+        foreach (var skin in skins)
+            skin.buyButton.interactable = local.kills >= skin.killCost;
+    }
+
+    // Called when panel opens so buttons are up to date
+    void OnEnable() => RefreshButtons();
 }

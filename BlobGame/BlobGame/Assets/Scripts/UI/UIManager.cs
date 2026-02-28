@@ -15,4 +15,11 @@ public class UIManager : MonoBehaviour
         Debug.Log($"Killed by {killedBy} with a score of: {finalScore}");
         // I will complete this method later to show a proper death screen UI, but for now it just logs the message to the console.
     }
+
+    public void ResetPlayerPrefs()
+    {
+        PlayerPrefs.DeleteAll();
+        PlayerPrefs.Save();
+        Debug.Log("PlayerPrefs reset!");
+    }
 }
