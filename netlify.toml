@@ -20,4 +20,4 @@
   for = "/*.data.br"
   [headers.values]
     Content-Encoding = "br"
-    Content-Type = "application/octet-stream"
+    Content-Type = "application/octet-stream"n
