@@ -114,7 +114,7 @@ export class GameRoom extends Room {
     if (len === 0) return;
 
     // ***Límite mínimo de velocidad para que nunca se congele***
-    const speed = Math.max(BASE_SPEED / (1 + p.size * 0.15), 0.05);
+    const speed = Math.max(BASE_SPEED / (1 + p.size * 0.15), 0.15);
     const dt = 1 / 20;
     p.x += (inputX / len) * speed * dt;
     p.z += (inputZ / len) * speed * dt;
