@@ -68,25 +68,12 @@ public class PlayerController : MonoBehaviour
         BillboardLabels();
     }
 
-    //void CheckLocalDeath()
-    //{
-    //    if (_deathHandled) return;
-    //    if (!_state.isAlive)
-    //    {
-    //        _deathHandled = true;
-    //        // Disable input while dead
-    //        this.enabled = false;
-    //        UIManager.Instance?.ShowDeathScreen("Unknown", _state.score);
-    //    }
-    //}
-
     /// <summary>
     /// Updates position and scale smoothly using interpolation
     /// based on the synchronized server state.
     /// </summary>
     void UpdateTransform()
     {
-        // Interpolate position for smoother movement
         _targetPos = new Vector3(_state.x, _state.y, _state.z);
 
         transform.position = Vector3.Lerp(
@@ -94,8 +81,6 @@ public class PlayerController : MonoBehaviour
             _targetPos,
             Time.deltaTime * 15f);
 
-        // Scale player based on score (normalized growth)
-        // Must match server-side `MAX_SCORE_FOR_SCALE` in `server/blob-server/src/rooms/MyRoom.ts`.
         const float MAX_SCORE = 50000f;
         const float MIN_SCALE = 1f;
         const float MAX_SCALE = 10f;
@@ -103,9 +88,12 @@ public class PlayerController : MonoBehaviour
         float t = Mathf.Clamp01((float)_state.score / MAX_SCORE);
         float targetScale = Mathf.Lerp(MIN_SCALE, MAX_SCALE, t);
 
+        // Breathing animation — subtle Y squish using a sine wave
+        float breathe = 1f + Mathf.Sin(Time.time * 2f) * 0.1f;
+
         transform.localScale = Vector3.Lerp(
             transform.localScale,
-            Vector3.one * targetScale,
+            new Vector3(targetScale, targetScale * breathe, targetScale),
             Time.deltaTime * 5f);
     }
 
