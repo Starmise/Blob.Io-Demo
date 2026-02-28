@@ -1,8 +1,5 @@
 [[headers]]
   for = "/*"
-  [headers.values]
-    Cross-Origin-Opener-Policy = "same-origin"
-    Cross-Origin-Embedder-Policy = "require-corp"
 
 [[headers]]
   for = "/*.js.br"
@@ -21,3 +18,8 @@
   [headers.values]
     Content-Encoding = "br"
     Content-Type = "application/octet-stream"n
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
