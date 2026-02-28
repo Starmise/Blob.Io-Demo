@@ -82,6 +82,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseHeight: 1
-  bobAmplitude: 0.25
-  bobSpeed: 2
+  bobAmplitude: 0.1
+  bobSpeed: 1
   rotationSpeed: 60
