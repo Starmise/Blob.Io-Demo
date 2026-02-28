@@ -7,6 +7,8 @@ const BLOB_COUNT = 400;
 const INVINCIBLE_SEC = 10;
 const BLOB_VALUES = [1, 2, 5, 10];
 
+// cd BlobGame/server/blob-server // yarn start
+
 export class GameRoom extends Room {
   declare state: GameState;
 
@@ -18,36 +20,50 @@ export class GameRoom extends Room {
 
     // Movement
     this.onMessage("move", (client, data: { x: number; z: number }) => {
-        this.handleMove(client.sessionId, data.x, data.z);
+      this.handleMove(client.sessionId, data.x, data.z);
     });
 
     // Buy skin
-    this.onMessage("buySkin", (client, data: { color: string; killCost: number }) => {
+    this.onMessage(
+      "buySkin",
+      (client, data: { color: string; killCost: number }) => {
         const p = this.state.players.get(client.sessionId);
         if (!p) return;
         if (p.kills < data.killCost) return;
         p.kills -= data.killCost;
-        p.color  = data.color;
-    });
+        p.color = data.color;
+      },
+    );
 
     // Add score (daily bonus, gifts)
     this.onMessage("addScore", (client, data: { amount: number }) => {
-        const p = this.state.players.get(client.sessionId);
-        if (p) p.score += data.amount;
+      const p = this.state.players.get(client.sessionId);
+      if (p) p.score += data.amount;
     });
 
     // Add kills (gifts)
     this.onMessage("addKills", (client, data: { amount: number }) => {
-        const p = this.state.players.get(client.sessionId);
-        if (p) p.kills += data.amount;
+      const p = this.state.players.get(client.sessionId);
+      if (p) p.kills += data.amount;
     });
 
     // Set color (skins)
     this.onMessage("setColor", (client, data: { color: string }) => {
-        const p = this.state.players.get(client.sessionId);
-        if (p) p.color = data.color;
+      const p = this.state.players.get(client.sessionId);
+      if (p) p.color = data.color;
     });
-}
+
+    // Request respawn (after death)
+    this.onMessage("requestRespawn", (client) => {
+      const p = this.state.players.get(client.sessionId);
+      if (!p) return;
+      p.x = (Math.random() - 0.5) * MAP_SIZE;
+      p.z = (Math.random() - 0.5) * MAP_SIZE;
+      p.isAlive = true;
+      p.isInvincible = true;
+      p.invincibilityEndTime = Date.now() / 1000 + INVINCIBLE_SEC;
+    });
+  }
 
   onJoin(client: Client, options: any) {
     const p = new PlayerState();
