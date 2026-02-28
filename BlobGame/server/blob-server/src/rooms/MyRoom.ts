@@ -14,13 +14,40 @@ export class GameRoom extends Room {
     this.state = new GameState();
     this.spawnBlobs(BLOB_COUNT);
 
-    this.setSimulationInterval((dt) => this.update(dt), 1000 / 20); // 20 ticks per second
+    this.setSimulationInterval((dt) => this.update(dt), 1000 / 20);
 
-    // Handle player movement input
+    // Movement
     this.onMessage("move", (client, data: { x: number; z: number }) => {
-      this.handleMove(client.sessionId, data.x, data.z); //
+        this.handleMove(client.sessionId, data.x, data.z);
     });
-  }
+
+    // Buy skin
+    this.onMessage("buySkin", (client, data: { color: string; killCost: number }) => {
+        const p = this.state.players.get(client.sessionId);
+        if (!p) return;
+        if (p.kills < data.killCost) return;
+        p.kills -= data.killCost;
+        p.color  = data.color;
+    });
+
+    // Add score (daily bonus, gifts)
+    this.onMessage("addScore", (client, data: { amount: number }) => {
+        const p = this.state.players.get(client.sessionId);
+        if (p) p.score += data.amount;
+    });
+
+    // Add kills (gifts)
+    this.onMessage("addKills", (client, data: { amount: number }) => {
+        const p = this.state.players.get(client.sessionId);
+        if (p) p.kills += data.amount;
+    });
+
+    // Set color (skins)
+    this.onMessage("setColor", (client, data: { color: string }) => {
+        const p = this.state.players.get(client.sessionId);
+        if (p) p.color = data.color;
+    });
+}
 
   onJoin(client: Client, options: any) {
     const p = new PlayerState();
@@ -66,7 +93,7 @@ export class GameRoom extends Room {
     const len = Math.sqrt(inputX * inputX + inputZ * inputZ);
     if (len === 0) return;
 
-    // Límite mínimo de velocidad para que nunca se congele
+    // ***Límite mínimo de velocidad para que nunca se congele***
     const speed = Math.max(BASE_SPEED / (1 + p.size * 0.15), 0.05);
     const dt = 1 / 20;
     p.x += (inputX / len) * speed * dt;
@@ -82,7 +109,7 @@ export class GameRoom extends Room {
       const dz = p.z - blob.z;
       const dist = Math.sqrt(dx * dx + dz * dz);
 
-      // Mismo cálculo de escala visual que Unity
+      // Same calculations as in Unity for visual size.
       const t = Math.min(p.score / 500000, 1);
       const visualSize = 1 + t * 9; // MIN=1, MAX=10
 

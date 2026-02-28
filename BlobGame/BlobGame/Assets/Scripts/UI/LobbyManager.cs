@@ -11,9 +11,9 @@ public class LobbyManager : MonoBehaviour
 
     [Header("Panel Settings")]
     public GameObject settingsPanel;
-    public Slider sliderVolume;
+    public Button btnMusicMute;
     public Button btnMute;
-    public Text txtMuteLabel;
+    //public Text txtMuteLabel;
 
     [Header("Prompt and Name")]
     public Text txtStartPrompt;
@@ -32,12 +32,9 @@ public class LobbyManager : MonoBehaviour
 
         btnSettings.onClick.AddListener(ToggleSettings);
 
+        btnMusicMute.onClick.AddListener(ToggleMute);
         btnMute.onClick.AddListener(ToggleMute);
 
-        sliderVolume.onValueChanged.AddListener(val =>
-            AudioListener.volume = val);
-
-        sliderVolume.value = 1f;
 
         StartCoroutine(BlinkPrompt());
     }
@@ -58,7 +55,7 @@ public class LobbyManager : MonoBehaviour
             if (EventSystem.current.IsPointerOverGameObject())
                 return;
 
-            if (_settingsOpen) return;
+            //if (_settingsOpen) return;
 
             StartGame();
         }
@@ -73,8 +70,7 @@ public class LobbyManager : MonoBehaviour
     void ToggleMute()
     {
         _muted = !_muted;
-        AudioListener.volume = _muted ? 0f : sliderVolume.value;
-        txtMuteLabel.text = _muted ? "Unmute" : "Mute";
+        AudioListener.volume = _muted ? 0f : 1f;
     }
 
     async void StartGame()
