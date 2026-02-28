@@ -362,8 +362,9 @@ GameObject:
   m_Component:
   - component: {fileID: 34171811}
   - component: {fileID: 34171812}
-  - component: {fileID: 34171810}
   - component: {fileID: 34171813}
+  - component: {fileID: 34171810}
+  - component: {fileID: 34171814}
   m_Layer: 0
   m_Name: UIManager
   m_TagString: Untagged
@@ -383,7 +384,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: db0800951dd739f489fccdf76756f17f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  deathPanel: {fileID: 454826475}
+  deathPanel: {fileID: 34171814}
 --- !u!4 &34171811
 Transform:
   m_ObjectHideFlags: 0
@@ -437,6 +438,24 @@ MonoBehaviour:
   luckySpinPanel: {fileID: 407305857}
   giftsPanel: {fileID: 491443782}
   orbitCamera: {fileID: 0}
+--- !u!114 &34171814
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 34171809}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1220ca583238c124db64e7f70709a769, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  overlayPanel: {fileID: 454826470}
+  txtFinalScore: {fileID: 1181698821}
+  txtMaxScore: {fileID: 1131423553}
+  btnRevive: {fileID: 1640599172}
+  btnRestart: {fileID: 1978996023}
+  txtCountdown: {fileID: 1628104553}
 --- !u!1 &34314724
 GameObject:
   m_ObjectHideFlags: 0
@@ -4921,7 +4940,6 @@ GameObject:
   - component: {fileID: 454826474}
   - component: {fileID: 454826473}
   - component: {fileID: 454826472}
-  - component: {fileID: 454826475}
   m_Layer: 5
   m_Name: DeathPanel
   m_TagString: Untagged
@@ -5019,23 +5037,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 454826470}
   m_CullTransparentMesh: 1
---- !u!114 &454826475
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 454826470}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1220ca583238c124db64e7f70709a769, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  txtFinalScore: {fileID: 1181698821}
-  txtMaxScore: {fileID: 1131423553}
-  btnRevive: {fileID: 1640599172}
-  btnRestart: {fileID: 1978996023}
-  txtCountdown: {fileID: 1628104553}
 --- !u!1 &462928724
 GameObject:
   m_ObjectHideFlags: 0
@@ -18360,6 +18361,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2100978021}
   - component: {fileID: 2100978020}
+  - component: {fileID: 2100978022}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -18396,6 +18398,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2100978022
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2100978019}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6130785b8da5a284ba597935e0289072, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crownPrefab: {fileID: 7875563367226492049, guid: eb07e26409ae82342ab72e4b67602d72, type: 3}
 --- !u!1 &2137972525
 GameObject:
   m_ObjectHideFlags: 0

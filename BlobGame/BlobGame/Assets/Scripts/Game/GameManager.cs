@@ -70,6 +70,11 @@ public class GameManager : MonoBehaviour
         });
     }
 
+    public bool TryGetPlayer(string sessionId, out PlayerController controller)
+    {
+        return _players.TryGetValue(sessionId, out controller);
+    }
+
     // Spawns a player in the scene based on the given session ID and player state.
     void SpawnPlayer(string sessionId, PlayerState state)
     {

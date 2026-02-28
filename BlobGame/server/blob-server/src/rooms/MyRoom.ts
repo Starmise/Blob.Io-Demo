@@ -3,9 +3,10 @@ import { GameState, PlayerState, BlobPickup } from "./schema/MyRoomState.js";
 
 const MAP_SIZE = 50;
 const BASE_SPEED = 0.5;
-const BLOB_COUNT = 400;
+const BLOB_COUNT = 800;
 const INVINCIBLE_SEC = 10;
 const BLOB_VALUES = [1, 2, 5, 10];
+const GOLDEN_BLOB_CHANCE = 0.05;
 // Controls how quickly players visually "grow" from score.
 // This MUST match the client-side scale curve (Unity `PlayerController`).
 const MAX_SCORE_FOR_SCALE = 50000;
@@ -181,33 +182,34 @@ export class GameRoom extends Room {
     loser.size = 1;
     loser.score = 0;
 
-    // Notify the loser about their death and who killed them
-    this.clients.forEach((c) => {
+    // Notify the loser — client will handle respawn timing
+    for (const c of this.clients) {
       if (c.sessionId === loser.id) {
         c.send("died", { killedBy: winner.name, finalScore });
       }
-    });
+    }
 
-    // Respawn after 3 seconds with invincibility
-    setTimeout(() => {
-      loser.x = (Math.random() - 0.5) * MAP_SIZE;
-      loser.z = (Math.random() - 0.5) * MAP_SIZE;
-      loser.isAlive = true;
-      loser.isInvincible = true;
-      loser.invincibilityEndTime = Date.now() / 1000 + INVINCIBLE_SEC;
-    }, 3000);
+    // No automatic respawn — client requests it via "requestRespawn"
   }
 
   // Spawn a number of blob pickups at random positions
   spawnBlobs(count: number) {
     for (let i = 0; i < count; i++) {
-      const blob = new BlobPickup();
-      blob.id = Math.random().toString(36).substr(2, 9);
-      // Antes era MAP_SIZE * 2, ahora dentro del mapa
-      blob.x = (Math.random() - 0.5) * MAP_SIZE * 1.8;
-      blob.z = (Math.random() - 0.5) * MAP_SIZE * 1.8;
-      blob.value = BLOB_VALUES[Math.floor(Math.random() * BLOB_VALUES.length)];
-      this.state.blobs.set(blob.id, blob);
+        const blob = new BlobPickup();
+        blob.id = Math.random().toString(36).substr(2, 9);
+        blob.x  = (Math.random() - 0.5) * MAP_SIZE * 1.8;
+        blob.z  = (Math.random() - 0.5) * MAP_SIZE * 1.8;
+
+        // 5% chance of golden blob
+        if (Math.random() < GOLDEN_BLOB_CHANCE) {
+            blob.value  = Math.floor(Math.random() * 2001) + 1000; // 1000-3000
+            blob.isGolden = true;
+        } else {
+            blob.value    = BLOB_VALUES[Math.floor(Math.random() * BLOB_VALUES.length)];
+            blob.isGolden = false;
+        }
+
+        this.state.blobs.set(blob.id, blob);
     }
-  }
+}
 }

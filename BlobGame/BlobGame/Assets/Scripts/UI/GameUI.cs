@@ -25,6 +25,10 @@ public class GameUI : MonoBehaviour
     {
         if (NetworkManager.Instance?.Room == null) return;
 
+        // Disable lobby button while death panel is showing
+        if (UIManager.Instance != null)
+            btnLobby.interactable = !UIManager.Instance.deathPanel.Panel.activeSelf;
+
         UpdateTopLeft();
         UpdateLeaderboard();
     }
@@ -51,19 +55,18 @@ public class GameUI : MonoBehaviour
         var room = NetworkManager.Instance.Room;
         var localId = room.SessionId;
 
-        // Organize players by score
+        // Organize players by score (include dead players so leaderboard stays visible when dead)
         var sorted = new List<(string id, PlayerState state)>();
         room.State.players.ForEach((sessionId, state) =>
         {
-            if (state.isAlive)
-                sorted.Add((sessionId, state));
+            sorted.Add((sessionId, state));
         });
         sorted = sorted.OrderByDescending(p => p.state.score).ToList();
 
         int localRank = sorted.FindIndex(p => p.id == localId);
         if (localRank < 0) return;
 
-        // Show th four closest players to the local player
+        // Show the four closest players to the local player
         int start;
         if (localRank == 0) start = 0;
         else if (localRank == 1) start = 0;

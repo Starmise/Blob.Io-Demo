@@ -4,6 +4,10 @@ using System.Collections;
 
 public class DeathPanel : MonoBehaviour
 {
+    [Header("Panel")]
+    [Tooltip("The overlay panel to show/hide on death. Assign the DeathPanel GameObject. If unset, uses this GameObject (will hide GameUI/leaderboard).")]
+    public GameObject overlayPanel;
+
     [Header("UI References")]
     public Text txtFinalScore;
     public Text txtMaxScore;
@@ -14,9 +18,11 @@ public class DeathPanel : MonoBehaviour
     private int _maxScore = 0;
     private int _countdownTime = 10;
 
+    public GameObject Panel => overlayPanel != null ? overlayPanel : gameObject;
+
     void Start()
     {
-        gameObject.SetActive(false);
+        Panel.SetActive(false);
 
         btnRevive.onClick.AddListener(OnRevive);
         btnRestart.onClick.AddListener(OnRestart);
@@ -25,7 +31,7 @@ public class DeathPanel : MonoBehaviour
     void Update()
     {
         // Restart on Space only when panel is active
-        if (gameObject.activeSelf && Input.GetKeyDown(KeyCode.Space))
+        if (Panel.activeSelf && Input.GetKeyDown(KeyCode.Space))
             OnRestart();
     }
 
@@ -41,7 +47,7 @@ public class DeathPanel : MonoBehaviour
         var local = FindLocalPlayer();
         if (local != null) local.enabled = false;
 
-        gameObject.SetActive(true);
+        Panel.SetActive(true);
         StartCoroutine(CountdownRoutine());
     }
 
@@ -50,7 +56,7 @@ public class DeathPanel : MonoBehaviour
         int t = _countdownTime;
         while (t > 0)
         {
-            txtCountdown.text = $"El juego se reiniciar· autom·ticamente en: {t}";
+            txtCountdown.text = $"El juego se reiniciarù automùticamente en: {t}";
             yield return new WaitForSeconds(1f);
             t--;
         }
@@ -59,9 +65,9 @@ public class DeathPanel : MonoBehaviour
 
     void OnRevive()
     {
-        Debug.Log("[AD] Simulated ad watched ó player revived!");
+        Debug.Log("[AD] Simulated ad watched ù player revived!");
         StopAllCoroutines();
-        gameObject.SetActive(false);
+        Panel.SetActive(false);
 
         // Re-enable player
         var local = FindLocalPlayer();
@@ -74,7 +80,7 @@ public class DeathPanel : MonoBehaviour
     void OnRestart()
     {
         StopAllCoroutines();
-        gameObject.SetActive(false);
+        Panel.SetActive(false);
         NetworkManager.Instance.LeaveGame();
     }
 

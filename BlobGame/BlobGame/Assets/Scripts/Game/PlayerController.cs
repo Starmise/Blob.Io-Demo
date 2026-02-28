@@ -20,7 +20,7 @@ public class PlayerController : MonoBehaviour
     private string _sessionId;
     private PlayerState _state;
     private Vector3 _targetPos;
-    private bool _deathHandled;
+    // private bool _deathHandled;
 
     /// <summary>
     /// Initializes the player controller with the given session ID, player state,
@@ -32,7 +32,7 @@ public class PlayerController : MonoBehaviour
         _state = state;
         _isLocal = isLocal;
         _targetPos = new Vector3(state.x, state.y, state.z);
-        _deathHandled = false;
+        // _deathHandled = false;
 
         Color color;
         if (ColorUtility.TryParseHtmlString(state.color, out color))
@@ -58,7 +58,7 @@ public class PlayerController : MonoBehaviour
         if (_isLocal)
         {
             HandleInput();
-            CheckLocalDeath();
+            // CheckLocalDeath();
         }
 
         // Update transform and visuals based on the latest synchronized state
@@ -68,18 +68,17 @@ public class PlayerController : MonoBehaviour
         BillboardLabels();
     }
 
-    void CheckLocalDeath()
-    {
-        if (_deathHandled) return;
-        if (!_state.isAlive)
-        {
-            _deathHandled = true;
-            if (UIManager.Instance != null)
-            {
-                UIManager.Instance.ShowDeathScreen("?", _state.score);
-            }
-        }
-    }
+    //void CheckLocalDeath()
+    //{
+    //    if (_deathHandled) return;
+    //    if (!_state.isAlive)
+    //    {
+    //        _deathHandled = true;
+    //        // Disable input while dead
+    //        this.enabled = false;
+    //        UIManager.Instance?.ShowDeathScreen("Unknown", _state.score);
+    //    }
+    //}
 
     /// <summary>
     /// Updates position and scale smoothly using interpolation
@@ -148,13 +147,17 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     void UpdateVisualState()
     {
-        // Invincibility effect is shown when the player is invincible.
+        // Update color from server state (handles skin changes from other players)
+        Color color;
+        if (ColorUtility.TryParseHtmlString(_state.color, out color))
+        {
+            if (bodyRenderer.material.color != color)
+                bodyRenderer.material.color = color;
+        }
+
         if (invincibilityEffect != null)
             invincibilityEffect.SetActive(_state.isInvincible);
 
-        // Hide dead remote players.
-        // For the local player, we keep the GameObject active so we can
-        // show the death screen without destroying the player object.
         if (!_isLocal)
             gameObject.SetActive(_state.isAlive);
     }
