@@ -6,6 +6,9 @@ const BASE_SPEED = 0.5;
 const BLOB_COUNT = 400;
 const INVINCIBLE_SEC = 10;
 const BLOB_VALUES = [1, 2, 5, 10];
+// Controls how quickly players visually "grow" from score.
+// This MUST match the client-side scale curve (Unity `PlayerController`).
+const MAX_SCORE_FOR_SCALE = 50000;
 
 // cd BlobGame/server/blob-server // yarn start
 
@@ -126,7 +129,7 @@ export class GameRoom extends Room {
       const dist = Math.sqrt(dx * dx + dz * dz);
 
       // Same calculations as in Unity for visual size.
-      const t = Math.min(p.score / 500000, 1);
+      const t = Math.min(p.score / MAX_SCORE_FOR_SCALE, 1);
       const visualSize = 1 + t * 9; // MIN=1, MAX=10
 
       if (dist < visualSize * 0.6) {
@@ -141,8 +144,7 @@ export class GameRoom extends Room {
   getVisualScale(p: PlayerState): number {
     const MIN_SCALE = 1;
     const MAX_SCALE = 10;
-    const MAX_SCORE = 500000;
-    const t = Math.min(p.score / MAX_SCORE, 1);
+    const t = Math.min(p.score / MAX_SCORE_FOR_SCALE, 1);
     return MIN_SCALE + t * (MAX_SCALE - MIN_SCALE);
   }
 
@@ -160,10 +162,10 @@ export class GameRoom extends Room {
         const scaleB = this.getVisualScale(b);
         const dist = Math.sqrt((a.x - b.x) ** 2 + (a.z - b.z) ** 2);
 
-        // Colisión basada en escala visual
+        // Colisión basada en escala visual; el ganador depende de los puntos.
         if (dist < (scaleA + scaleB) * 0.4) {
-          if (scaleA > scaleB * 1.1) this.consumePlayer(a, b);
-          else if (scaleB > scaleA * 1.1) this.consumePlayer(b, a);
+          if (a.score > b.score) this.consumePlayer(a, b);
+          else if (b.score > a.score) this.consumePlayer(b, a);
         }
       }
     }

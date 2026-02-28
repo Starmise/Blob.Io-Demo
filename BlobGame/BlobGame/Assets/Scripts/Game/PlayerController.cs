@@ -20,6 +20,7 @@ public class PlayerController : MonoBehaviour
     private string _sessionId;
     private PlayerState _state;
     private Vector3 _targetPos;
+    private bool _deathHandled;
 
     /// <summary>
     /// Initializes the player controller with the given session ID, player state,
@@ -31,6 +32,7 @@ public class PlayerController : MonoBehaviour
         _state = state;
         _isLocal = isLocal;
         _targetPos = new Vector3(state.x, state.y, state.z);
+        _deathHandled = false;
 
         Color color;
         if (ColorUtility.TryParseHtmlString(state.color, out color))
@@ -54,13 +56,29 @@ public class PlayerController : MonoBehaviour
 
         // Handle local input only for the local player
         if (_isLocal)
+        {
             HandleInput();
+            CheckLocalDeath();
+        }
 
         // Update transform and visuals based on the latest synchronized state
         UpdateTransform();
         UpdateVisualState();
         UpdateLabels();
         BillboardLabels();
+    }
+
+    void CheckLocalDeath()
+    {
+        if (_deathHandled) return;
+        if (!_state.isAlive)
+        {
+            _deathHandled = true;
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowDeathScreen("?", _state.score);
+            }
+        }
     }
 
     /// <summary>
@@ -78,7 +96,8 @@ public class PlayerController : MonoBehaviour
             Time.deltaTime * 15f);
 
         // Scale player based on score (normalized growth)
-        const float MAX_SCORE = 500000f;
+        // Must match server-side `MAX_SCORE_FOR_SCALE` in `server/blob-server/src/rooms/MyRoom.ts`.
+        const float MAX_SCORE = 50000f;
         const float MIN_SCALE = 1f;
         const float MAX_SCALE = 10f;
 

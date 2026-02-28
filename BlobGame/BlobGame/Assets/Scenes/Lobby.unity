@@ -578,7 +578,6 @@ MonoBehaviour:
   settingsPanel: {fileID: 518633569}
   btnMusicMute: {fileID: 347268465}
   btnMute: {fileID: 1671325413}
-  txtMuteLabel: {fileID: 0}
   txtStartPrompt: {fileID: 828961995}
   nameInput: {fileID: 946277742}
 --- !u!4 &492113208
