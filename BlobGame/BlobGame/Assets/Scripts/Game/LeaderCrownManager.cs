@@ -56,6 +56,12 @@ public class LeaderCrownManager : MonoBehaviour
         if (bestId == _currentLeaderId && _currentCrown != null)
             return;
 
+        // log when we are about to change leader/crown
+        if (bestId != _currentLeaderId)
+        {
+            Debug.Log($"[LeaderCrownManager] leader changed from '{_currentLeaderId}' to '{bestId}'");
+        }
+
         // Leader changed: destroy old crown
         if (_currentCrown != null)
         {
@@ -67,6 +73,7 @@ public class LeaderCrownManager : MonoBehaviour
         if (!GameManager.Instance.TryGetPlayer(bestId, out var controller) ||
             controller == null)
         {
+            Debug.LogWarning($"[LeaderCrownManager] Could not find PlayerController for leader {bestId}");
             _currentLeaderId = null;
             return;
         }
@@ -75,6 +82,7 @@ public class LeaderCrownManager : MonoBehaviour
         _currentCrown = Instantiate(crownPrefab, controller.transform);
         _currentCrown.transform.localPosition = Vector3.zero;
         _currentLeaderId = bestId;
+        Debug.Log($"[LeaderCrownManager] instantiated crown on player {bestId}");
     }
 }
 
