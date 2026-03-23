@@ -23,7 +23,6 @@ public class SkinsPanel : MonoBehaviour
 
             string skinId = skin.skinId;
             int cost = skin.killCost;
-            Debug.Log(cost);
 
             var img = go.transform.Find("Skin_img")?.GetComponent<Image>();
             var btn = go.transform.Find("SkinPurchase_btn")?.GetComponent<Button>();

@@ -43,6 +43,7 @@ public class SidePanelsUI : MonoBehaviour
             panel.SetActive(false);
             _currentPanel = null;
             orbitCamera?.SetRotationEnabled(true);
+            SetScrollLock(false);
             return;
         }
 
@@ -53,6 +54,7 @@ public class SidePanelsUI : MonoBehaviour
         // Open new panel
         _currentPanel = panel;
         panel.SetActive(true);
+        SetScrollLock(true);
 
         orbitCamera?.SetRotationEnabled(false);
     }
@@ -64,6 +66,15 @@ public class SidePanelsUI : MonoBehaviour
             _currentPanel.SetActive(false);
             _currentPanel = null;
             orbitCamera?.SetRotationEnabled(true);
+            SetScrollLock(false);
         }
+    }
+
+    void SetScrollLock(bool locked)
+    {
+        if (orbitCamera != null)
+            orbitCamera.SetZoomEnabled(!locked);
+        else
+            Debug.LogWarning("OrbitCamera is NULL");
     }
 }
