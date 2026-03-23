@@ -55,6 +55,22 @@ public class GameManager : MonoBehaviour
         {
             if (_blobs.TryGetValue(id, out var view))
             {
+                // Only show floating score if local player is nearby (they collected it)
+                if (Camera.main != null)
+                {
+                    PlayerController localPlayer = null;
+                    foreach (var p in _players.Values)
+                        if (p._isLocal) { localPlayer = p; break; }
+
+                    if (localPlayer != null)
+                    {
+                        // Get the canvas from the local player prefab
+                        var canvas = localPlayer.GetComponentInChildren<Canvas>();
+                        if (canvas != null)
+                            FloatingScore.Spawn(canvas, view.transform.position, (int)blob.value, Camera.main);
+                    }
+                }
+
                 if (view != null && view.gameObject != null)
                 {
                     Destroy(view.gameObject);
