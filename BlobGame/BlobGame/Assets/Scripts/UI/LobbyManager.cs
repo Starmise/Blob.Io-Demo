@@ -83,7 +83,10 @@ public class LobbyManager : MonoBehaviour
         string enteredName = nameInput != null ? nameInput.text.Trim() : "";
         NetworkManager.Instance.LocalPlayerName =
             string.IsNullOrEmpty(enteredName) ? $"blob{Random.Range(100, 9999)}" : enteredName;
-        NetworkManager.Instance.LocalPlayerColor = "#FFD700"; // yellow in platform
+
+        // Load saved skin, fallback to default
+        string savedSkin = PlayerPrefs.GetString("SelectedSkin", "default");
+        NetworkManager.Instance.LocalSkinId = savedSkin;
 
         await NetworkManager.Instance.JoinGame();
     }

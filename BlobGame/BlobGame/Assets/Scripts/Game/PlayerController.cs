@@ -20,7 +20,11 @@ public class PlayerController : MonoBehaviour
     private string _sessionId;
     private PlayerState _state;
     private Vector3 _targetPos;
-    // private bool _deathHandled;
+
+    [Header("Skin")]
+    public SkinDatabase skinDatabase;
+
+    private string _currentSkinId = "";
 
     /// <summary>
     /// Initializes the player controller with the given session ID, player state,
@@ -34,6 +38,7 @@ public class PlayerController : MonoBehaviour
         _targetPos = new Vector3(state.x, state.y, state.z);
         // _deathHandled = false;
 
+        // For fallback
         Color color;
         if (ColorUtility.TryParseHtmlString(state.color, out color))
             bodyRenderer.material.color = color;
@@ -135,12 +140,16 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     void UpdateVisualState()
     {
-        // Update color from server state (handles skin changes from other players)
-        Color color;
-        if (ColorUtility.TryParseHtmlString(_state.color, out color))
+        // Update skin material using skinId when itchanges
+        if (!string.IsNullOrEmpty(_state.skinId) && _state.skinId != _currentSkinId)
         {
-            if (bodyRenderer.material.color != color)
-                bodyRenderer.material.color = color;
+            _currentSkinId = _state.skinId;
+            if (skinDatabase != null)
+            {
+                var mat = skinDatabase.GetMaterial(_currentSkinId);
+                if (mat != null)
+                    bodyRenderer.material = mat;
+            }
         }
 
         if (invincibilityEffect != null)

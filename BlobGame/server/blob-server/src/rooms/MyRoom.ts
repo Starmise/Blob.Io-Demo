@@ -2,14 +2,14 @@ import { Room, Client } from "colyseus";
 import { GameState, PlayerState, BlobPickup } from "./schema/MyRoomState.js";
 
 const MAP_SIZE = 50;
-const BASE_SPEED = 0.5;
-const BLOB_COUNT = 800;
+const BASE_SPEED = 0.6;
+const BLOB_COUNT = 1200;
 const INVINCIBLE_SEC = 10;
 const BLOB_VALUES = [1, 2, 5, 10];
-const GOLDEN_BLOB_CHANCE = 0.05;
+const SPECIAL_BLOB_CHANCE = 0.01;
 // Controls how quickly players visually "grow" from score.
 // This MUST match the client-side scale curve (Unity `PlayerController`).
-const MAX_SCORE_FOR_SCALE = 50000;
+const MAX_SCORE_FOR_SCALE = 100000;
 
 // cd BlobGame/server/blob-server // yarn start
 
@@ -30,12 +30,12 @@ export class GameRoom extends Room {
     // Buy skin
     this.onMessage(
       "buySkin",
-      (client, data: { color: string; killCost: number }) => {
+      (client, data: { skinId: string; killCost: number }) => {
         const p = this.state.players.get(client.sessionId);
         if (!p) return;
         if (p.kills < data.killCost) return;
         p.kills -= data.killCost;
-        p.color = data.color;
+        p.skinId = data.skinId;
       },
     );
 
@@ -73,7 +73,7 @@ export class GameRoom extends Room {
     const p = new PlayerState();
     p.id = client.sessionId;
     p.name = (options.name || "Player").substring(0, 16);
-    p.color = options.color || "#4488FF";
+    p.skinId = options.skinId ?? "default";
     p.x = (Math.random() - 0.5) * MAP_SIZE; // Spawn in random position
     p.z = (Math.random() - 0.5) * MAP_SIZE; // Y is fixed since it's a "top-down" game
     p.y = 0;
@@ -113,8 +113,9 @@ export class GameRoom extends Room {
     const len = Math.sqrt(inputX * inputX + inputZ * inputZ);
     if (len === 0) return;
 
-    // ***Límite mínimo de velocidad para que nunca se congele***
-    const speed = Math.max(BASE_SPEED / (1 + p.size * 0.15), 0.15);
+    // Logarithmic slowdown: starts fast, gradually slows
+    const speedMultiplier = 1 / (1 + Math.log1p(p.score / 1000) * 0.4);
+    const speed = Math.max(BASE_SPEED * speedMultiplier, 0.3);
     const dt = 1 / 20;
     p.x += (inputX / len) * speed * dt;
     p.z += (inputZ / len) * speed * dt;
@@ -129,12 +130,13 @@ export class GameRoom extends Room {
       const dz = p.z - blob.z;
       const dist = Math.sqrt(dx * dx + dz * dz);
 
-      // Same calculations as in Unity for visual size.
       const t = Math.min(p.score / MAX_SCORE_FOR_SCALE, 1);
-      const visualSize = 1 + t * 9; // MIN=1, MAX=10
+      const visualSize = 1 + t * 9;
 
       if (dist < visualSize * 0.6) {
-        p.size += blob.value * 0.01;
+        // Logarithmic growth: fast at start, slower as player grows
+        const growthFactor = 1 / (1 + Math.log1p(p.score / 500));
+        p.size += blob.value * 0.02 * growthFactor;
         p.score += blob.value;
         this.state.blobs.delete(key);
         this.spawnBlobs(1);
@@ -195,21 +197,23 @@ export class GameRoom extends Room {
   // Spawn a number of blob pickups at random positions
   spawnBlobs(count: number) {
     for (let i = 0; i < count; i++) {
-        const blob = new BlobPickup();
-        blob.id = Math.random().toString(36).substr(2, 9);
-        blob.x  = (Math.random() - 0.5) * MAP_SIZE * 1.8;
-        blob.z  = (Math.random() - 0.5) * MAP_SIZE * 1.8;
+      const blob = new BlobPickup();
+      blob.id = Math.random().toString(36).substr(2, 9);
+      blob.x = (Math.random() - 0.5) * MAP_SIZE * 1.8;
+      blob.z = (Math.random() - 0.5) * MAP_SIZE * 1.8;
+      blob.isSpecial = false;
 
-        // 5% chance of golden blob
-        if (Math.random() < GOLDEN_BLOB_CHANCE) {
-            blob.value  = Math.floor(Math.random() * 2001) + 1000; // 1000-3000
-            blob.isGolden = true;
-        } else {
-            blob.value    = BLOB_VALUES[Math.floor(Math.random() * BLOB_VALUES.length)];
-            blob.isGolden = false;
-        }
+      const roll = Math.random();
+      if (roll < SPECIAL_BLOB_CHANCE) {
+        // Special item: 3000-12000 points
+        blob.value = Math.floor(Math.random() * 9001) + 3000;
+        blob.isSpecial = true;
+      } else {
+        blob.value =
+          BLOB_VALUES[Math.floor(Math.random() * BLOB_VALUES.length)];
+      }
 
-        this.state.blobs.set(blob.id, blob);
+      this.state.blobs.set(blob.id, blob);
     }
-}
+  }
 }

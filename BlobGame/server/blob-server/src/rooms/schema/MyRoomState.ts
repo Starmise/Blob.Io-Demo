@@ -4,7 +4,7 @@ import { Schema, MapSchema, type } from "@colyseus/schema";
 export class PlayerState extends Schema {
   @type("string")  id: string = "";
   @type("string")  name: string = "Player";
-  @type("string")  color: string = "#ffdd44"; // Default color for players
+  @type("string")  color: string = "#FFF400"; // Default color for players
   @type("float32") x: number = 0;
   @type("float32") y: number = 0;
   @type("float32") z: number = 0;
@@ -14,6 +14,7 @@ export class PlayerState extends Schema {
   @type("boolean") isAlive: boolean = true;
   @type("boolean") isInvincible: boolean = false;
   @type("float32") invincibilityEndTime: number = 0;
+  @type("string")  skinId: string = "default";
 }
 
 // Define the blob pickup schema
@@ -22,7 +23,7 @@ export class BlobPickup extends Schema {
   @type("float32") x: number = 0;
   @type("float32") z: number = 0;
   @type("float32") value: number = 1;
-  @type("boolean") isGolden: boolean = false;
+  @type("boolean") isSpecial: boolean = false;
 }
 
 // Define the overall game state schema

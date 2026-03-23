@@ -97,7 +97,7 @@ public class GameUI : MonoBehaviour
             if (p.id == localId)
             {
                 txt.fontStyle = FontStyle.Bold;
-                txt.color = new Color(1f, 0.15f, 0.85f); // I think is green
+                txt.color = new Color(0f, 0f, 0f);
             }
 
             _entries.Add(go);
