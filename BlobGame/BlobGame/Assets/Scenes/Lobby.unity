@@ -671,7 +671,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 24eba30939e6fcb48b01196bcdaf2ea6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  serverAddress: wss://blob-io-demo.onrender.com
+  serverAddress: ws://localhost:2567
   LocalPlayerName: Player
   LocalPlayerColor: '#4488FF'
 --- !u!4 &573345443
@@ -2794,6 +2794,7 @@ MonoBehaviour:
   invincibilityEffect: {fileID: 0}
   orbitCamera: {fileID: 0}
   _isLocal: 0
+  skinDatabase: {fileID: 0}
 --- !u!23 &4731309977660202225
 MeshRenderer:
   m_ObjectHideFlags: 0

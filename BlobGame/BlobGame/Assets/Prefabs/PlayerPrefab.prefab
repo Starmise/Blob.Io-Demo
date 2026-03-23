@@ -492,3 +492,4 @@ MonoBehaviour:
   invincibilityEffect: {fileID: 0}
   orbitCamera: {fileID: 6514225592977997067}
   _isLocal: 0
+  skinDatabase: {fileID: 11400000, guid: 7e9de9fd363aca745ae6d4bc063882ff, type: 2}

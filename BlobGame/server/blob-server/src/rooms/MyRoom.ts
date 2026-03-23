@@ -30,14 +30,13 @@ export class GameRoom extends Room {
     // Buy skin
     this.onMessage(
       "buySkin",
-      (client, data: { color: string; killCost: number }) => {
+      (client, data: { skinId: string; killCost: number }) => {
         const p = this.state.players.get(client.sessionId);
         if (!p) return;
         if (p.kills < data.killCost) return;
         p.kills -= data.killCost;
-        p.color = data.color;
-      },
-    );
+        p.skinId = data.skinId;
+      });
 
     // Add score (daily bonus, gifts)
     this.onMessage("addScore", (client, data: { amount: number }) => {
@@ -73,7 +72,7 @@ export class GameRoom extends Room {
     const p = new PlayerState();
     p.id = client.sessionId;
     p.name = (options.name || "Player").substring(0, 16);
-    p.color = options.color || "#4488FF";
+    p.skinId = options.skinId ?? "default";
     p.x = (Math.random() - 0.5) * MAP_SIZE; // Spawn in random position
     p.z = (Math.random() - 0.5) * MAP_SIZE; // Y is fixed since it's a "top-down" game
     p.y = 0;
@@ -195,21 +194,22 @@ export class GameRoom extends Room {
   // Spawn a number of blob pickups at random positions
   spawnBlobs(count: number) {
     for (let i = 0; i < count; i++) {
-        const blob = new BlobPickup();
-        blob.id = Math.random().toString(36).substr(2, 9);
-        blob.x  = (Math.random() - 0.5) * MAP_SIZE * 1.8;
-        blob.z  = (Math.random() - 0.5) * MAP_SIZE * 1.8;
+      const blob = new BlobPickup();
+      blob.id = Math.random().toString(36).substr(2, 9);
+      blob.x = (Math.random() - 0.5) * MAP_SIZE * 1.8;
+      blob.z = (Math.random() - 0.5) * MAP_SIZE * 1.8;
 
-        // 5% chance of golden blob
-        if (Math.random() < GOLDEN_BLOB_CHANCE) {
-            blob.value  = Math.floor(Math.random() * 2001) + 1000; // 1000-3000
-            blob.isGolden = true;
-        } else {
-            blob.value    = BLOB_VALUES[Math.floor(Math.random() * BLOB_VALUES.length)];
-            blob.isGolden = false;
-        }
+      // 5% chance of golden blob
+      if (Math.random() < GOLDEN_BLOB_CHANCE) {
+        blob.value = Math.floor(Math.random() * 2001) + 1000; // 1000-3000
+        blob.isGolden = true;
+      } else {
+        blob.value =
+          BLOB_VALUES[Math.floor(Math.random() * BLOB_VALUES.length)];
+        blob.isGolden = false;
+      }
 
-        this.state.blobs.set(blob.id, blob);
+      this.state.blobs.set(blob.id, blob);
     }
-}
+  }
 }

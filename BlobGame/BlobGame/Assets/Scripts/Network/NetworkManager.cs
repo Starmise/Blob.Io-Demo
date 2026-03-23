@@ -17,6 +17,7 @@ public class NetworkManager : MonoBehaviour
 
     public string LocalPlayerName = "Player";
     public string LocalPlayerColor = "#4488FF";
+    public string LocalSkinId = "default";
 
     public bool IsInGame { get; private set; } = false;
 
@@ -57,8 +58,9 @@ public class NetworkManager : MonoBehaviour
             "game_room",
             new Dictionary<string, object>
             {
-                { "name", LocalPlayerName },
-                { "color", LocalPlayerColor }
+                { "name",   LocalPlayerName  },
+                { "color",  LocalPlayerColor },
+                { "skinId", LocalSkinId      }
             }
         );
 

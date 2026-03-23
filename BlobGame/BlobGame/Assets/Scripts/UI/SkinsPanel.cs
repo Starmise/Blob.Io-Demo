@@ -1,33 +1,50 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class SkinsPanel : MonoBehaviour
 {
-    [System.Serializable]
-    public class SkinEntry
-    {
-        public Image skinPreview;  // Read color from this
-        public Button buyButton;
-        public int killCost = 3;
-    }
-
-    [Header("Skin entries (8 total)")]
-    public SkinEntry[] skins;
-
-    [Header("Feedback text")]
+    [Header("References")]
+    public SkinDatabase skinDatabase;
+    public GameObject skinItemPrefab;
+    public Transform container;
     public Text txtFeedback;
+
+    private List<SkinDatabase.SkinEntry> _skins = new();
 
     void Start()
     {
-        for (int i = 0; i < skins.Length; i++)
+        if (skinDatabase == null || skinItemPrefab == null || container == null)
+            return;
+
+        foreach (var skin in skinDatabase.skins)
         {
-            int index = i;
-            skins[i].buyButton.onClick.AddListener(() => BuySkin(index));
+            var go = Instantiate(skinItemPrefab, container);
+
+            string skinId = skin.skinId;
+            int cost = skin.killCost;
+            Debug.Log(cost);
+
+            var img = go.transform.Find("Skin_img")?.GetComponent<Image>();
+            var btn = go.transform.Find("SkinPurchase_btn")?.GetComponent<Button>();
+            var costTxt = go.transform.Find("SkinPurchase_btn/SkinPrice_txt")?.GetComponent<Text>();
+            var nameTxt = go.transform.Find("SkinName_txt")?.GetComponent<Text>();
+
+            if (img != null)
+                img.sprite = skin.previewSprite;
+
+            if (costTxt != null)
+                costTxt.text = $"0{cost}";
+
+            if (nameTxt != null)
+                nameTxt.text = skinId;
+
+            if (btn != null)
+                btn.onClick.AddListener(() => BuySkin(skinId, cost));
         }
-        RefreshButtons();
     }
 
-    void BuySkin(int index)
+    void BuySkin(string skinId, int killCost)
     {
         var room = NetworkManager.Instance.Room;
         if (room == null) return;
@@ -40,65 +57,23 @@ public class SkinsPanel : MonoBehaviour
 
         if (local == null) return;
 
-        SkinEntry skin = skins[index];
-
-        if (local.kills < skin.killCost)
+        if (local.kills < killCost)
         {
             if (txtFeedback != null)
-                txtFeedback.text = $"Not enough kills! Need {skin.killCost}.";
+                txtFeedback.text = $"Not enough kills! Need {killCost}.";
             return;
         }
 
-        // Instead of reading colorHex string, read from the preview image
-        Color skinColor = skin.skinPreview.color;
-        string hex = "#" + ColorUtility.ToHtmlStringRGB(skinColor);
+        PlayerPrefs.SetString("SelectedSkin", skinId);
+        PlayerPrefs.Save();
 
         NetworkManager.Instance.Room?.Send("buySkin", new
         {
-            color = hex,
-            killCost = skin.killCost
+            skinId,
+            killCost
         });
-
-        // Apply color immediately on local player
-        Color color;
-        if (ColorUtility.TryParseHtmlString(hex, out color))
-        {
-            var localPlayer = FindLocalPlayer();
-            if (localPlayer != null)
-                localPlayer.bodyRenderer.material.color = color;
-        }
 
         if (txtFeedback != null)
             txtFeedback.text = "Skin equipped!";
-
-        RefreshButtons();
     }
-
-    PlayerController FindLocalPlayer()
-    {
-        foreach (var p in FindObjectsOfType<PlayerController>())
-            if (p._isLocal) return p;
-        return null;
-    }
-
-    void RefreshButtons()
-    {
-        // Refresh button interactability based on kills (updated each time panel opens)
-        var room = NetworkManager.Instance?.Room;
-        if (room == null) return;
-
-        PlayerState local = null;
-        room.State.players.ForEach((id, state) =>
-        {
-            if (id == room.SessionId) local = state;
-        });
-
-        if (local == null) return;
-
-        foreach (var skin in skins)
-            skin.buyButton.interactable = local.kills >= skin.killCost;
-    }
-
-    // Called when panel opens so buttons are up to date
-    void OnEnable() => RefreshButtons();
 }

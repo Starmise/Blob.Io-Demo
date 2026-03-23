@@ -20,6 +20,7 @@ public partial class PlayerState : Schema
     [Type(9, "boolean")] public bool isAlive = default;
     [Type(10, "boolean")] public bool isInvincible = default;
     [Type(11, "float32")] public float invincibilityEndTime = default;
+    [Type(12, "string")] public string skinId = default;
 }
 
 /// <summary>
