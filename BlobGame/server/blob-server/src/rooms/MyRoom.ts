@@ -6,7 +6,7 @@ import { GameState, PlayerState, BlobPickup } from "./schema/MyRoomState.js";
 const MAP_SIZE = 75;
 const BASE_SPEED = 0.9;
 /** Target blob count (high — use spatial grid in update for O(n) pickup checks). */
-const BLOB_COUNT = 4000;
+const BLOB_COUNT = 6000;
 /** World units per grid cell for blob proximity queries (≈ max pickup reach / 2). */
 const BLOB_CELL_SIZE = 8;
 const INVINCIBLE_SEC = 10;
@@ -22,13 +22,13 @@ const SPEED_BOOST_DURATION_SEC = 4;
 // This MUST match the client-side scale curve (Unity `PlayerController`).
 const MAX_SCORE_FOR_SCALE = 200000;
 
-// Movement: gentler slowdown vs score (higher ref = same score feels "lighter").
-const SPEED_SCORE_REF = 8000;
-const SPEED_LOG_WEIGHT = 0.14;
-// Biggest players still move at least this fraction of BASE_SPEED (was a harsh flat 0.3).
-const MIN_SPEED_RATIO = 0.64;
+// Movement: io-style — barely slower when huge.
+const SPEED_SCORE_REF = MAX_SCORE_FOR_SCALE;
+const SPEED_LOG_WEIGHT = 0.055;
+// Safety floor for absurd scores; normal play stays above this via the soft curve.
+const MIN_SPEED_RATIO = 0.92;
 
-/** Pickup tint options — edit to taste; must stay in sync with client expectations (CSS hex). */
+/** Pickup tint options — edit to taste; must stay in sync with client expectations. */
 const BLOB_PICKUP_COLORS = [
   "#ff6b6b",
   "#4ecdc4",
@@ -311,8 +311,9 @@ export class GameRoom extends Room {
     for (let i = 0; i < count; i++) {
       const blob = new BlobPickup();
       blob.id = Math.random().toString(36).substr(2, 9);
-      blob.x = (Math.random() - 0.5) * MAP_SIZE * 1.8;
-      blob.z = (Math.random() - 0.5) * MAP_SIZE * 1.8;
+      // Full arena on X/Z (±MAP_SIZE, same as player clamp).
+      blob.x = (Math.random() - 0.5) * 2 * MAP_SIZE;
+      blob.z = (Math.random() - 0.5) * 2 * MAP_SIZE;
       blob.isSpecial = false;
       blob.isSpeedBoost = false;
       blob.isSpeedSlow = false;

@@ -16,6 +16,13 @@ public class PlayerController : MonoBehaviour
     public GameObject invincibilityEffect;
     [Tooltip("Shield visual diameter vs player horizontal scale (max of X/Z).")]
     [SerializeField] float invincibilityShieldScaleFactor = 1.3f;
+    [Header("Shadow")]
+    [Tooltip("Child that follows blob size on X/Z; leave empty to auto-find \"shadow\".")]
+    [SerializeField] Transform shadowTransform;
+    [Tooltip("World X/Z size = blob horizontal radius scale (ignores Y breathing).")]
+    [SerializeField] float shadowWorldXZMultiplier = 1f;
+    [Tooltip("World Y size = blob horizontal scale (set small for a flat decal).")]
+    [SerializeField] float shadowWorldYMultiplier = 1f;
     [Header("Speed boost / slow VFX")]
     [Tooltip("Assign VFX_Speedlines prefab. Shown while server reports speedBoostActive (opposite to facing).")]
     public GameObject speedLinesVfxPrefab;
@@ -37,6 +44,18 @@ public class PlayerController : MonoBehaviour
     public SkinDatabase skinDatabase;
 
     private string _currentSkinId = "";
+    private Vector3 _shadowBaseLocalScale = Vector3.one;
+
+    void Awake()
+    {
+        if (shadowTransform == null)
+        {
+            var t = transform.Find("shadow");
+            if (t != null) shadowTransform = t;
+        }
+        if (shadowTransform != null)
+            _shadowBaseLocalScale = shadowTransform.localScale;
+    }
 
     /// <summary>
     /// Initializes the player controller with the given session ID, player state,
@@ -95,6 +114,7 @@ public class PlayerController : MonoBehaviour
     {
         UpdateInvincibilityShieldScale();
         UpdateSpeedLinesVfx();
+        UpdateShadowScale();
     }
 
     /// <summary>
@@ -129,6 +149,32 @@ public class PlayerController : MonoBehaviour
         if (w <= 1e-4f) return;
 
         invincibilityEffect.transform.localScale = new Vector3(w / s.x, w / s.y, w / s.z);
+    }
+
+    /// <summary>
+    /// Blob scale is (t, t�breathe, t). Drive shadow world X/Z from t only; cancel breathe on Y so the shadow does not pulse.
+    /// </summary>
+    void UpdateShadowScale()
+    {
+        if (shadowTransform == null) return;
+
+        Vector3 s = transform.localScale;
+        float sx = s.x;
+        float sz = s.z;
+        if (sx <= 1e-4f || sz <= 1e-4f) return;
+
+        float horiz = Mathf.Max(sx, sz);
+        float worldXZ = shadowWorldXZMultiplier * horiz;
+        float worldY = shadowWorldYMultiplier * horiz;
+
+        var comp = new Vector3(
+            worldXZ / sx,
+            worldY / s.y,
+            worldXZ / sz);
+        shadowTransform.localScale = new Vector3(
+            _shadowBaseLocalScale.x * comp.x,
+            _shadowBaseLocalScale.y * comp.y,
+            _shadowBaseLocalScale.z * comp.z);
     }
 
     void SetupSpeedLinesVfxInstance()
