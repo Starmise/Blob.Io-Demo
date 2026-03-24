@@ -26,9 +26,9 @@ Transform:
   m_GameObject: {fileID: 5727610741594271232}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.8, z: 0}
+  m_LocalPosition: {x: 0, y: 1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 7176401761248022142}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -210,4 +210,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   specialSprite: {fileID: 0}
+  speedBoostSprite: {fileID: 21300000, guid: 73ba541c3df2b6e46a610067cd504ad0, type: 3}
   spriteRenderer: {fileID: 24127050927292908}
+  pulseAmount: 0.08
+  pulseSpeed: 4
+  floatAmount: 0.08
+  floatSpeed: 2.2

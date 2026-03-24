@@ -35,6 +35,7 @@ public partial class BlobPickup : Schema
     [Type(3, "float32")] public float value = default;
     [Type(4, "boolean")] public bool isSpecial = default;
     [Type(5, "string")] public string color = default;
+    [Type(6, "boolean")] public bool isSpeedBoost = default;
 }
 
 /// <summary>

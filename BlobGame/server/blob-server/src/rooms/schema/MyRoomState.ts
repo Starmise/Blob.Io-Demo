@@ -26,6 +26,7 @@ export class BlobPickup extends Schema {
   @type("boolean") isSpecial: boolean = false;
   /** CSS hex color for client rendering (independent of value). */
   @type("string")  color: string = "#ffffff";
+  @type("boolean") isSpeedBoost: boolean = false;
 }
 
 // Define the overall game state schema

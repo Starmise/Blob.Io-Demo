@@ -9,7 +9,7 @@ public class SpinPanel : MonoBehaviour
     public Text txtFreeTimer;
 
     private const string SPINS_KEY = "PlayerSpins";
-    private float _freeTimer = 180f; // 3 minutes
+    private float _freeTimer = 120f; // 2 minutes
     private bool _timerReady = false;
 
     void Awake()

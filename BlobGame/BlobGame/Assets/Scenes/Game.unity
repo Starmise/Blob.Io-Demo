@@ -2209,7 +2209,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0.29631495, y: 1}
-  m_AnchoredPosition: {x: -0.000030517578, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &239109442
@@ -3723,7 +3723,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -0.000030517578, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &438212056
@@ -4391,7 +4391,7 @@ MonoBehaviour:
   gifts:
   - claimButton: {fileID: 1765425953}
     timerText: {fileID: 473128533}
-    points: 4000
+    points: 3000
     spins: 0
     kills: 0
     unlockAfterSeconds: 60
@@ -4403,13 +4403,13 @@ MonoBehaviour:
     unlockAfterSeconds: 120
   - claimButton: {fileID: 645119642}
     timerText: {fileID: 1433644353}
-    points: 9000
+    points: 6000
     spins: 0
     kills: 0
     unlockAfterSeconds: 180
   - claimButton: {fileID: 288616883}
     timerText: {fileID: 1843178008}
-    points: 13000
+    points: 10000
     spins: 0
     kills: 0
     unlockAfterSeconds: 240
@@ -4421,7 +4421,7 @@ MonoBehaviour:
     unlockAfterSeconds: 300
   - claimButton: {fileID: 152360602}
     timerText: {fileID: 947694195}
-    points: 18000
+    points: 15000
     spins: 0
     kills: 0
     unlockAfterSeconds: 360
@@ -10208,7 +10208,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -0.000030517578, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1406212323
@@ -12547,7 +12547,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.46, y: 0.72}
   m_AnchorMax: {x: 0.53, y: 0.85}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 2, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1736964945

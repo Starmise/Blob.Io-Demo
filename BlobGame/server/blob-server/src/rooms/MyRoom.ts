@@ -4,7 +4,7 @@ import { GameState, PlayerState, BlobPickup } from "./schema/MyRoomState.js";
 // Half-width of the arena in world units (players stay within [-MAP_SIZE, MAP_SIZE] on X/Z).
 // Must match the Unity Game scene: Plane scale (2*MAP_SIZE+2)/10 on X/Z, walls at ±(MAP_SIZE+1).
 const MAP_SIZE = 75;
-const BASE_SPEED = 0.6;
+const BASE_SPEED = 0.7;
 /** Target blob count (high — use spatial grid in update for O(n) pickup checks). */
 const BLOB_COUNT = 4000;
 /** World units per grid cell for blob proximity queries (≈ max pickup reach / 2). */
@@ -12,6 +12,9 @@ const BLOB_CELL_SIZE = 8;
 const INVINCIBLE_SEC = 10;
 const BLOB_VALUES = [1, 2, 5, 10];
 const SPECIAL_BLOB_CHANCE = 0.01;
+const SPEED_BLOB_CHANCE = 0.02;
+const SPEED_BOOST_MULTIPLIER = 1.35;
+const SPEED_BOOST_DURATION_SEC = 4;
 // Controls how quickly players visually "grow" from score.
 // This MUST match the client-side scale curve (Unity `PlayerController`).
 const MAX_SCORE_FOR_SCALE = 200000;
@@ -42,6 +45,7 @@ function randomBlobPresetColor(): string {
 
 export class GameRoom extends Room {
   declare state: GameState;
+  private readonly _speedBoostUntil = new Map<string, number>();
 
   onCreate(options: any) {
     this.state = new GameState();
@@ -115,6 +119,7 @@ export class GameRoom extends Room {
   // Handle player leaving the room
   onLeave(client: Client) {
     this.state.players.delete(client.sessionId);
+    this._speedBoostUntil.delete(client.sessionId);
     console.log(`[LEAVE] ${client.sessionId}`);
   }
 
@@ -161,10 +166,14 @@ export class GameRoom extends Room {
     // Slowdown vs score: same BASE_SPEED at low score, milder drop-off when huge.
     const speedT = Math.log1p(p.score / SPEED_SCORE_REF) * SPEED_LOG_WEIGHT;
     const speedMultiplier = 1 / (1 + speedT);
-    const speed = Math.max(
+    let speed = Math.max(
       BASE_SPEED * speedMultiplier,
       BASE_SPEED * MIN_SPEED_RATIO,
     );
+    const boostUntil = this._speedBoostUntil.get(sessionId) ?? 0;
+    if (Date.now() / 1000 < boostUntil) {
+      speed *= SPEED_BOOST_MULTIPLIER;
+    }
     const dt = 1 / 20;
     p.x += (inputX / len) * speed * dt;
     p.z += (inputZ / len) * speed * dt;
@@ -197,10 +206,17 @@ export class GameRoom extends Room {
           const dz = p.z - blob.z;
           if (dx * dx + dz * dz >= pickupRSq) continue;
 
-          // Slower stat growth at high score (visual scale is score-driven; this stays in sync loosely).
-          const growthFactor = 1 / (1 + Math.log1p(p.score / 800));
-          p.size += blob.value * 0.014 * growthFactor;
-          p.score += blob.value;
+          if (blob.isSpeedBoost) {
+            this._speedBoostUntil.set(
+              p.id,
+              Date.now() / 1000 + SPEED_BOOST_DURATION_SEC,
+            );
+          } else {
+            // Slower stat growth at high score (visual scale is score-driven; this stays in sync loosely).
+            const growthFactor = 1 / (1 + Math.log1p(p.score / 800));
+            p.size += blob.value * 0.014 * growthFactor;
+            p.score += blob.value;
+          }
           this.state.blobs.delete(key);
           this.spawnBlobs(1);
         }
@@ -247,6 +263,7 @@ export class GameRoom extends Room {
     loser.isAlive = false;
     loser.size = 1;
     loser.score = 0;
+    this._speedBoostUntil.delete(loser.id);
 
     // Notify the loser — client will handle respawn timing
     for (const c of this.clients) {
@@ -266,13 +283,17 @@ export class GameRoom extends Room {
       blob.x = (Math.random() - 0.5) * MAP_SIZE * 1.8;
       blob.z = (Math.random() - 0.5) * MAP_SIZE * 1.8;
       blob.isSpecial = false;
+      blob.isSpeedBoost = false;
       blob.color = randomBlobPresetColor();
 
       const roll = Math.random();
       if (roll < SPECIAL_BLOB_CHANCE) {
-        // Special item: 3000-12000 points
-        blob.value = Math.floor(Math.random() * 9001) + 3000;
+        // Special item: 3000-4000 points
+        blob.value = Math.floor(Math.random() * 1001) + 3000;
         blob.isSpecial = true;
+      } else if (roll < SPECIAL_BLOB_CHANCE + SPEED_BLOB_CHANCE) {
+        blob.value = 0;
+        blob.isSpeedBoost = true;
       } else {
         blob.value =
           BLOB_VALUES[Math.floor(Math.random() * BLOB_VALUES.length)];

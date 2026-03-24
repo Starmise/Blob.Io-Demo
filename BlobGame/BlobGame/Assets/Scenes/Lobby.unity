@@ -2793,6 +2793,7 @@ MonoBehaviour:
   nameLabel: {fileID: 7522082549175434287}
   scoreLabel: {fileID: 5106212960961789368}
   invincibilityEffect: {fileID: 0}
+  invincibilityShieldScaleFactor: 1.3
   orbitCamera: {fileID: 0}
   _isLocal: 0
   skinDatabase: {fileID: 0}

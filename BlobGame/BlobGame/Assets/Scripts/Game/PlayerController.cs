@@ -14,6 +14,8 @@ public class PlayerController : MonoBehaviour
     public Text nameLabel;
     public Text scoreLabel;
     public GameObject invincibilityEffect;
+    [Tooltip("Shield visual diameter vs player horizontal scale (max of X/Z).")]
+    [SerializeField] float invincibilityShieldScaleFactor = 1.3f;
     public OrbitCamera orbitCamera;
     public bool _isLocal;
 
@@ -49,6 +51,8 @@ public class PlayerController : MonoBehaviour
         if (orbitCamera != null)
             orbitCamera.Setup(transform, isLocal);
 
+        SetupInvincibilityShieldInstance();
+
         /* I learned that in Colyseus 0.17, instead of using OnChange callbacks for state changes, we can just read
          the updated state directly in the Update method. The state object is automatically updated with the latest 
          values from the server, so we can just access _state.x, _state.y, etc. in Update and it will have the current values. 
@@ -73,6 +77,45 @@ public class PlayerController : MonoBehaviour
         BillboardLabels();
     }
 
+    void LateUpdate()
+    {
+        UpdateInvincibilityShieldScale();
+    }
+
+    /// <summary>
+    /// If the inspector references the shield prefab asset (not a child), instantiate it under the player.
+    /// Keeps Z = 90ï¿½ and centers on the blob so it tracks growth.
+    /// </summary>
+    void SetupInvincibilityShieldInstance()
+    {
+        if (invincibilityEffect == null) return;
+
+        if (invincibilityEffect.transform.parent != transform)
+        {
+            invincibilityEffect = Instantiate(invincibilityEffect, transform);
+            invincibilityEffect.name = "InvincibilityShield";
+        }
+
+        invincibilityEffect.transform.localPosition = Vector3.zero;
+        invincibilityEffect.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+    }
+
+    /// <summary>
+    /// Player scale is non-uniform (breathing on Y). Set shield local scale so world scale stays uniform
+    /// at <see cref="invincibilityShieldScaleFactor"/> horizontal player size.
+    /// </summary>
+    void UpdateInvincibilityShieldScale()
+    {
+        if (_state == null || invincibilityEffect == null) return;
+        if (!_state.isInvincible || !invincibilityEffect.activeInHierarchy) return;
+
+        Vector3 s = transform.localScale;
+        float w = invincibilityShieldScaleFactor * Mathf.Max(s.x, s.z);
+        if (w <= 1e-4f) return;
+
+        invincibilityEffect.transform.localScale = new Vector3(w / s.x, w / s.y, w / s.z);
+    }
+
     /// <summary>
     /// Updates position and scale smoothly using interpolation
     /// based on the synchronized server state.
@@ -94,7 +137,7 @@ public class PlayerController : MonoBehaviour
         float t = Mathf.Clamp01((float)_state.score / MAX_SCORE);
         float targetScale = Mathf.Lerp(MIN_SCALE, MAX_SCALE, t);
 
-        // Breathing animation — subtle Y squish using a sine wave
+        // Breathing animation subtle Y squish using a sine wave
         float breathe = 1f + Mathf.Sin(Time.time * 2f) * 0.1f;
 
         transform.localScale = Vector3.Lerp(

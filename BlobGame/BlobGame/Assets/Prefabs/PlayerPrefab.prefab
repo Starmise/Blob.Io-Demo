@@ -489,7 +489,7 @@ MonoBehaviour:
   bodyRenderer: {fileID: 4731309976110522969}
   nameLabel: {fileID: 7522082550976791175}
   scoreLabel: {fileID: 5106212960221102864}
-  invincibilityEffect: {fileID: 0}
+  invincibilityEffect: {fileID: 8218415206322072350, guid: 33c54e3598ebe4e4b8aaeb7ac4058fe9, type: 3}
   orbitCamera: {fileID: 6514225592977997067}
   _isLocal: 0
   skinDatabase: {fileID: 11400000, guid: 7e9de9fd363aca745ae6d4bc063882ff, type: 2}
