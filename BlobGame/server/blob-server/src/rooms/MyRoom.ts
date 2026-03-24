@@ -4,7 +4,7 @@ import { GameState, PlayerState, BlobPickup } from "./schema/MyRoomState.js";
 // Half-width of the arena in world units (players stay within [-MAP_SIZE, MAP_SIZE] on X/Z).
 // Must match the Unity Game scene: Plane scale (2*MAP_SIZE+2)/10 on X/Z, walls at ±(MAP_SIZE+1).
 const MAP_SIZE = 75;
-const BASE_SPEED = 0.7;
+const BASE_SPEED = 0.9;
 /** Target blob count (high — use spatial grid in update for O(n) pickup checks). */
 const BLOB_COUNT = 4000;
 /** World units per grid cell for blob proximity queries (≈ max pickup reach / 2). */
@@ -97,6 +97,8 @@ export class GameRoom extends Room {
       p.isAlive = true;
       p.isInvincible = true;
       p.invincibilityEndTime = Date.now() / 1000 + INVINCIBLE_SEC;
+      this._speedBoostUntil.delete(client.sessionId);
+      p.speedBoostActive = false;
     });
   }
 
@@ -112,6 +114,7 @@ export class GameRoom extends Room {
     p.isAlive = true;
     p.isInvincible = true;
     p.invincibilityEndTime = Date.now() / 1000 + INVINCIBLE_SEC; // Invincibility on spawn for 10 seconds
+    p.speedBoostActive = false;
     this.state.players.set(client.sessionId, p);
     console.log(`[JOIN] ${p.name}`);
   }
@@ -135,6 +138,10 @@ export class GameRoom extends Room {
       p.x = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.x)); // Keep player within bounds
       p.z = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.z)); // Keep player within bounds
       this.checkBlobPickups(p, blobGrid);
+
+      const until = this._speedBoostUntil.get(p.id) ?? 0;
+      const boostOn = now < until;
+      if (p.speedBoostActive !== boostOn) p.speedBoostActive = boostOn;
     });
     this.checkPlayerCollisions();
   }
@@ -264,6 +271,7 @@ export class GameRoom extends Room {
     loser.size = 1;
     loser.score = 0;
     this._speedBoostUntil.delete(loser.id);
+    loser.speedBoostActive = false;
 
     // Notify the loser — client will handle respawn timing
     for (const c of this.clients) {

@@ -16,12 +16,21 @@ public class PlayerController : MonoBehaviour
     public GameObject invincibilityEffect;
     [Tooltip("Shield visual diameter vs player horizontal scale (max of X/Z).")]
     [SerializeField] float invincibilityShieldScaleFactor = 1.3f;
+    [Header("Speed boost VFX")]
+    [Tooltip("Assign VFX_Speedlines prefab. Shown while server reports speedBoostActive.")]
+    public GameObject speedLinesVfxPrefab;
+    [Tooltip("Uniform world scale: VFX size = blob horizontal scale � this. Example: blob 4 ? VFX 0.8 when 0.2.")]
+    [SerializeField] float speedLinesToBlobScaleRatio = 0.3f;
     public OrbitCamera orbitCamera;
     public bool _isLocal;
 
     private string _sessionId;
     private PlayerState _state;
     private Vector3 _targetPos;
+    private GameObject _speedLinesInstance;
+    private Vector3 _lastMoveDirXZ = Vector3.forward;
+    private Vector3 _lastStatePosXZ;
+    private Vector3 _remoteFacingXZ = Vector3.forward;
 
     [Header("Skin")]
     public SkinDatabase skinDatabase;
@@ -38,6 +47,7 @@ public class PlayerController : MonoBehaviour
         _state = state;
         _isLocal = isLocal;
         _targetPos = new Vector3(state.x, state.y, state.z);
+        _lastStatePosXZ = new Vector3(state.x, 0f, state.z);
         // _deathHandled = false;
 
         // For fallback
@@ -52,6 +62,7 @@ public class PlayerController : MonoBehaviour
             orbitCamera.Setup(transform, isLocal);
 
         SetupInvincibilityShieldInstance();
+        SetupSpeedLinesVfxInstance();
 
         /* I learned that in Colyseus 0.17, instead of using OnChange callbacks for state changes, we can just read
          the updated state directly in the Update method. The state object is automatically updated with the latest 
@@ -72,6 +83,7 @@ public class PlayerController : MonoBehaviour
 
         // Update transform and visuals based on the latest synchronized state
         UpdateTransform();
+        UpdateRemoteFacingFromState();
         UpdateVisualState();
         UpdateLabels();
         BillboardLabels();
@@ -80,11 +92,12 @@ public class PlayerController : MonoBehaviour
     void LateUpdate()
     {
         UpdateInvincibilityShieldScale();
+        UpdateSpeedLinesVfx();
     }
 
     /// <summary>
     /// If the inspector references the shield prefab asset (not a child), instantiate it under the player.
-    /// Keeps Z = 90� and centers on the blob so it tracks growth.
+    /// Keeps Z = 90 degrees and centers on the blob so it tracks growth.
     /// </summary>
     void SetupInvincibilityShieldInstance()
     {
@@ -114,6 +127,60 @@ public class PlayerController : MonoBehaviour
         if (w <= 1e-4f) return;
 
         invincibilityEffect.transform.localScale = new Vector3(w / s.x, w / s.y, w / s.z);
+    }
+
+    void SetupSpeedLinesVfxInstance()
+    {
+        if (speedLinesVfxPrefab == null) return;
+
+        if (_speedLinesInstance == null || _speedLinesInstance.transform.parent != transform)
+        {
+            _speedLinesInstance = Instantiate(speedLinesVfxPrefab, transform);
+            _speedLinesInstance.name = "VFX_Speedlines";
+        }
+
+        _speedLinesInstance.transform.localPosition = Vector3.zero;
+        _speedLinesInstance.SetActive(false);
+    }
+
+    void UpdateRemoteFacingFromState()
+    {
+        if (_isLocal || _state == null) return;
+
+        Vector3 cur = new Vector3(_state.x, 0f, _state.z);
+        Vector3 delta = cur - _lastStatePosXZ;
+        _lastStatePosXZ = cur;
+        if (delta.sqrMagnitude > 1e-6f)
+            _remoteFacingXZ = delta.normalized;
+    }
+
+    void UpdateSpeedLinesVfx()
+    {
+        if (_state == null || _speedLinesInstance == null) return;
+
+        bool show = _state.speedBoostActive;
+        if (_speedLinesInstance.activeSelf != show)
+            _speedLinesInstance.SetActive(show);
+        if (!show) return;
+
+        Vector3 s = transform.localScale;
+        float blobScale = Mathf.Max(s.x, s.z);
+        float worldVfxUniform = blobScale * speedLinesToBlobScaleRatio;
+        _speedLinesInstance.transform.localScale = new Vector3(
+            worldVfxUniform / s.x,
+            worldVfxUniform / s.y,
+            worldVfxUniform / s.z);
+
+        Vector3 face = GetFacingDirXZ();
+        float yawDeg = Mathf.Atan2(face.x, face.z) * Mathf.Rad2Deg;
+        _speedLinesInstance.transform.localRotation = Quaternion.Euler(0f, yawDeg + 180f, 0f);
+    }
+
+    Vector3 GetFacingDirXZ()
+    {
+        if (_isLocal)
+            return _lastMoveDirXZ.sqrMagnitude > 1e-6f ? _lastMoveDirXZ : Vector3.forward;
+        return _remoteFacingXZ.sqrMagnitude > 1e-6f ? _remoteFacingXZ : Vector3.forward;
     }
 
     /// <summary>
@@ -221,6 +288,8 @@ public class PlayerController : MonoBehaviour
         var right = Vector3.ProjectOnPlane(cam.right, Vector3.up).normalized;
 
         var dir = forward * v + right * h;
+        if (dir.sqrMagnitude > 1e-6f)
+            _lastMoveDirXZ = new Vector3(dir.x, 0f, dir.z).normalized;
 
         // Send movement to server
         NetworkManager.Instance.SendMove(dir.x, dir.z);

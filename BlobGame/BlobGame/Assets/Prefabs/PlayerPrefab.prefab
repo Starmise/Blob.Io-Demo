@@ -490,6 +490,9 @@ MonoBehaviour:
   nameLabel: {fileID: 7522082550976791175}
   scoreLabel: {fileID: 5106212960221102864}
   invincibilityEffect: {fileID: 8218415206322072350, guid: 33c54e3598ebe4e4b8aaeb7ac4058fe9, type: 3}
+  invincibilityShieldScaleFactor: 1.3
+  speedLinesVfxPrefab: {fileID: 4799043843209571573, guid: d1cb7cb1bd78660429d0464133927391, type: 3}
+  speedLinesToBlobScaleRatio: 0.3
   orbitCamera: {fileID: 6514225592977997067}
   _isLocal: 0
   skinDatabase: {fileID: 11400000, guid: 7e9de9fd363aca745ae6d4bc063882ff, type: 2}

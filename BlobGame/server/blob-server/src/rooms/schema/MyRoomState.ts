@@ -15,6 +15,8 @@ export class PlayerState extends Schema {
   @type("boolean") isInvincible: boolean = false;
   @type("float32") invincibilityEndTime: number = 0;
   @type("string")  skinId: string = "default";
+  /** Synced for clients (speed boost pickup VFX). */
+  @type("boolean") speedBoostActive: boolean = false;
 }
 
 // Define the blob pickup schema

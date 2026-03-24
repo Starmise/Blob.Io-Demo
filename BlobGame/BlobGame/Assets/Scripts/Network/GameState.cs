@@ -21,6 +21,7 @@ public partial class PlayerState : Schema
     [Type(10, "boolean")] public bool isInvincible = default;
     [Type(11, "float32")] public float invincibilityEndTime = default;
     [Type(12, "string")] public string skinId = default;
+    [Type(13, "boolean")] public bool speedBoostActive = default;
 }
 
 /// <summary>
