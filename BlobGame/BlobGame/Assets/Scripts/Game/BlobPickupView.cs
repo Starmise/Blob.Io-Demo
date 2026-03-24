@@ -20,9 +20,12 @@ public class BlobPickupView : MonoBehaviour
     Vector3 _baseScale;
     Vector3 _basePos;
 
+    [Header("Slow debuff (same sprite as boost, tinted)")]
+    [SerializeField] Color slowSpriteTint = new Color(1f, 0.55f, 0.55f, 1f);
+
     public void Init(BlobPickup data)
     {
-        _isSpritePickup = data.isSpecial || data.isSpeedBoost;
+        _isSpritePickup = data.isSpecial || data.isSpeedBoost || data.isSpeedSlow;
 
         if (_isSpritePickup)
         {
@@ -40,7 +43,11 @@ public class BlobPickupView : MonoBehaviour
                 spriteRenderer.enabled = true;
                 if (data.isSpecial && specialSprite != null) spriteRenderer.sprite = specialSprite;
                 else if (data.isSpeedBoost && speedBoostSprite != null) spriteRenderer.sprite = speedBoostSprite;
-                spriteRenderer.color = Color.white;
+                else if (data.isSpeedSlow && speedBoostSprite != null) spriteRenderer.sprite = speedBoostSprite;
+                if (data.isSpeedSlow)
+                    spriteRenderer.color = slowSpriteTint;
+                else
+                    spriteRenderer.color = Color.white;
             }
             return;
         }

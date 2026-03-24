@@ -16,10 +16,10 @@ public class PlayerController : MonoBehaviour
     public GameObject invincibilityEffect;
     [Tooltip("Shield visual diameter vs player horizontal scale (max of X/Z).")]
     [SerializeField] float invincibilityShieldScaleFactor = 1.3f;
-    [Header("Speed boost VFX")]
-    [Tooltip("Assign VFX_Speedlines prefab. Shown while server reports speedBoostActive.")]
+    [Header("Speed boost / slow VFX")]
+    [Tooltip("Assign VFX_Speedlines prefab. Shown while server reports speedBoostActive (opposite to facing).")]
     public GameObject speedLinesVfxPrefab;
-    [Tooltip("Uniform world scale: VFX size = blob horizontal scale � this. Example: blob 4 ? VFX 0.8 when 0.2.")]
+    public GameObject speedLinesRedVfxPrefab;
     [SerializeField] float speedLinesToBlobScaleRatio = 0.3f;
     public OrbitCamera orbitCamera;
     public bool _isLocal;
@@ -28,6 +28,7 @@ public class PlayerController : MonoBehaviour
     private PlayerState _state;
     private Vector3 _targetPos;
     private GameObject _speedLinesInstance;
+    private GameObject _speedLinesRedInstance;
     private Vector3 _lastMoveDirXZ = Vector3.forward;
     private Vector3 _lastStatePosXZ;
     private Vector3 _remoteFacingXZ = Vector3.forward;
@@ -63,6 +64,7 @@ public class PlayerController : MonoBehaviour
 
         SetupInvincibilityShieldInstance();
         SetupSpeedLinesVfxInstance();
+        SetupSpeedLinesRedVfxInstance();
 
         /* I learned that in Colyseus 0.17, instead of using OnChange callbacks for state changes, we can just read
          the updated state directly in the Update method. The state object is automatically updated with the latest 
@@ -143,6 +145,20 @@ public class PlayerController : MonoBehaviour
         _speedLinesInstance.SetActive(false);
     }
 
+    void SetupSpeedLinesRedVfxInstance()
+    {
+        if (speedLinesRedVfxPrefab == null) return;
+
+        if (_speedLinesRedInstance == null || _speedLinesRedInstance.transform.parent != transform)
+        {
+            _speedLinesRedInstance = Instantiate(speedLinesRedVfxPrefab, transform);
+            _speedLinesRedInstance.name = "VFX_SpeedlinesRed";
+        }
+
+        _speedLinesRedInstance.transform.localPosition = Vector3.zero;
+        _speedLinesRedInstance.SetActive(false);
+    }
+
     void UpdateRemoteFacingFromState()
     {
         if (_isLocal || _state == null) return;
@@ -156,24 +172,36 @@ public class PlayerController : MonoBehaviour
 
     void UpdateSpeedLinesVfx()
     {
-        if (_state == null || _speedLinesInstance == null) return;
+        if (_state == null) return;
 
-        bool show = _state.speedBoostActive;
-        if (_speedLinesInstance.activeSelf != show)
-            _speedLinesInstance.SetActive(show);
+        Vector3 face = GetFacingDirXZ();
+        float yawDeg = Mathf.Atan2(face.x, face.z) * Mathf.Rad2Deg;
+
+        UpdateOneSpeedLineVfx(
+            _speedLinesInstance,
+            _state.speedBoostActive,
+            yawDeg + 180f);
+        UpdateOneSpeedLineVfx(
+            _speedLinesRedInstance,
+            _state.speedSlowActive,
+            yawDeg);
+    }
+
+    void UpdateOneSpeedLineVfx(GameObject instance, bool show, float yawYDegrees)
+    {
+        if (instance == null) return;
+        if (instance.activeSelf != show)
+            instance.SetActive(show);
         if (!show) return;
 
         Vector3 s = transform.localScale;
         float blobScale = Mathf.Max(s.x, s.z);
         float worldVfxUniform = blobScale * speedLinesToBlobScaleRatio;
-        _speedLinesInstance.transform.localScale = new Vector3(
+        instance.transform.localScale = new Vector3(
             worldVfxUniform / s.x,
             worldVfxUniform / s.y,
             worldVfxUniform / s.z);
-
-        Vector3 face = GetFacingDirXZ();
-        float yawDeg = Mathf.Atan2(face.x, face.z) * Mathf.Rad2Deg;
-        _speedLinesInstance.transform.localRotation = Quaternion.Euler(0f, yawDeg + 180f, 0f);
+        instance.transform.localRotation = Quaternion.Euler(0f, yawYDegrees, 0f);
     }
 
     Vector3 GetFacingDirXZ()

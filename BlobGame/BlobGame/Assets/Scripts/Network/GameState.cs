@@ -22,6 +22,7 @@ public partial class PlayerState : Schema
     [Type(11, "float32")] public float invincibilityEndTime = default;
     [Type(12, "string")] public string skinId = default;
     [Type(13, "boolean")] public bool speedBoostActive = default;
+    [Type(14, "boolean")] public bool speedSlowActive = default;
 }
 
 /// <summary>
@@ -37,6 +38,7 @@ public partial class BlobPickup : Schema
     [Type(4, "boolean")] public bool isSpecial = default;
     [Type(5, "string")] public string color = default;
     [Type(6, "boolean")] public bool isSpeedBoost = default;
+    [Type(7, "boolean")] public bool isSpeedSlow = default;
 }
 
 /// <summary>

@@ -17,6 +17,8 @@ export class PlayerState extends Schema {
   @type("string")  skinId: string = "default";
   /** Synced for clients (speed boost pickup VFX). */
   @type("boolean") speedBoostActive: boolean = false;
+  /** Synced for clients (slow debuff pickup VFX). */
+  @type("boolean") speedSlowActive: boolean = false;
 }
 
 // Define the blob pickup schema
@@ -29,6 +31,8 @@ export class BlobPickup extends Schema {
   /** CSS hex color for client rendering (independent of value). */
   @type("string")  color: string = "#ffffff";
   @type("boolean") isSpeedBoost: boolean = false;
+  /** Same sprite as boost; server + client use tint / VFX to differ. */
+  @type("boolean") isSpeedSlow: boolean = false;
 }
 
 // Define the overall game state schema
