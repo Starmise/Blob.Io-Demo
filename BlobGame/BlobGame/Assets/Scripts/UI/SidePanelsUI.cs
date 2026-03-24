@@ -23,6 +23,8 @@ public class SidePanelsUI : MonoBehaviour
 
     void Start()
     {
+        GiftsPanel.InitializePlaySession();
+
         // Close all panels at the start
         skinsPanel.SetActive(false);
         dailyBonusPanel.SetActive(false);

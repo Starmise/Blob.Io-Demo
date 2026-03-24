@@ -357,7 +357,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2084288531b60834eaf565a98e8b8ddd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  distance: 12
+  distance: 8
   yAngle: 45
   xAngle: 0
   sensitivity: 3

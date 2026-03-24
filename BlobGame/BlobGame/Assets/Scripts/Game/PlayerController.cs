@@ -86,7 +86,8 @@ public class PlayerController : MonoBehaviour
             _targetPos,
             Time.deltaTime * 15f);
 
-        const float MAX_SCORE = 50000f;
+        // Must match server `MAX_SCORE_FOR_SCALE` in MyRoom.ts (visual growth vs score).
+        const float MAX_SCORE = 200000f;
         const float MIN_SCALE = 1f;
         const float MAX_SCALE = 10f;
 

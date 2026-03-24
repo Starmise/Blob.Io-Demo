@@ -24,6 +24,8 @@ export class BlobPickup extends Schema {
   @type("float32") z: number = 0;
   @type("float32") value: number = 1;
   @type("boolean") isSpecial: boolean = false;
+  /** CSS hex color for client rendering (independent of value). */
+  @type("string")  color: string = "#ffffff";
 }
 
 // Define the overall game state schema

@@ -1,15 +1,42 @@
 import { Room, Client } from "colyseus";
 import { GameState, PlayerState, BlobPickup } from "./schema/MyRoomState.js";
 
-const MAP_SIZE = 50;
+// Half-width of the arena in world units (players stay within [-MAP_SIZE, MAP_SIZE] on X/Z).
+// Must match the Unity Game scene: Plane scale (2*MAP_SIZE+2)/10 on X/Z, walls at ±(MAP_SIZE+1).
+const MAP_SIZE = 75;
 const BASE_SPEED = 0.6;
-const BLOB_COUNT = 1200;
+/** Target blob count (high — use spatial grid in update for O(n) pickup checks). */
+const BLOB_COUNT = 4000;
+/** World units per grid cell for blob proximity queries (≈ max pickup reach / 2). */
+const BLOB_CELL_SIZE = 8;
 const INVINCIBLE_SEC = 10;
 const BLOB_VALUES = [1, 2, 5, 10];
 const SPECIAL_BLOB_CHANCE = 0.01;
 // Controls how quickly players visually "grow" from score.
 // This MUST match the client-side scale curve (Unity `PlayerController`).
-const MAX_SCORE_FOR_SCALE = 100000;
+const MAX_SCORE_FOR_SCALE = 200000;
+
+// Movement: gentler slowdown vs score (higher ref = same score feels "lighter").
+const SPEED_SCORE_REF = 8000;
+const SPEED_LOG_WEIGHT = 0.14;
+// Biggest players still move at least this fraction of BASE_SPEED (was a harsh flat 0.3).
+const MIN_SPEED_RATIO = 0.64;
+
+/** Pickup tint options — edit to taste; must stay in sync with client expectations (CSS hex). */
+const BLOB_PICKUP_COLORS = [
+  "#ff6b6b",
+  "#4ecdc4",
+  "#ffe66d",
+  "#a29bfe",
+  "#fd79a8",
+  "#74b9ff",
+] as const;
+
+function randomBlobPresetColor(): string {
+  return BLOB_PICKUP_COLORS[
+    Math.floor(Math.random() * BLOB_PICKUP_COLORS.length)
+  ];
+}
 
 // cd BlobGame/server/blob-server // yarn start
 
@@ -93,6 +120,7 @@ export class GameRoom extends Room {
 
   update(dt: number) {
     const now = Date.now() / 1000;
+    const blobGrid = this.buildBlobCellGrid();
     this.state.players.forEach((p: PlayerState) => {
       // Update invincibility and check pickups
       if (!p.isAlive) return;
@@ -101,9 +129,26 @@ export class GameRoom extends Room {
       }
       p.x = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.x)); // Keep player within bounds
       p.z = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.z)); // Keep player within bounds
-      this.checkBlobPickups(p);
+      this.checkBlobPickups(p, blobGrid);
     });
     this.checkPlayerCollisions();
+  }
+
+  /** Bucket blob ids by grid cell so each player only scans nearby blobs. */
+  private buildBlobCellGrid(): Map<string, string[]> {
+    const grid = new Map<string, string[]>();
+    this.state.blobs.forEach((blob, id) => {
+      const ix = Math.floor(blob.x / BLOB_CELL_SIZE);
+      const iz = Math.floor(blob.z / BLOB_CELL_SIZE);
+      const k = `${ix},${iz}`;
+      let bucket = grid.get(k);
+      if (!bucket) {
+        bucket = [];
+        grid.set(k, bucket);
+      }
+      bucket.push(id);
+    });
+    return grid;
   }
 
   // Handle player movement input
@@ -113,9 +158,13 @@ export class GameRoom extends Room {
     const len = Math.sqrt(inputX * inputX + inputZ * inputZ);
     if (len === 0) return;
 
-    // Logarithmic slowdown: starts fast, gradually slows
-    const speedMultiplier = 1 / (1 + Math.log1p(p.score / 1000) * 0.4);
-    const speed = Math.max(BASE_SPEED * speedMultiplier, 0.3);
+    // Slowdown vs score: same BASE_SPEED at low score, milder drop-off when huge.
+    const speedT = Math.log1p(p.score / SPEED_SCORE_REF) * SPEED_LOG_WEIGHT;
+    const speedMultiplier = 1 / (1 + speedT);
+    const speed = Math.max(
+      BASE_SPEED * speedMultiplier,
+      BASE_SPEED * MIN_SPEED_RATIO,
+    );
     const dt = 1 / 20;
     p.x += (inputX / len) * speed * dt;
     p.z += (inputZ / len) * speed * dt;
@@ -123,25 +172,40 @@ export class GameRoom extends Room {
     p.z = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.z));
   }
 
-  // Check if player is close enough to any blob pickups
-  checkBlobPickups(p: PlayerState) {
-    this.state.blobs.forEach((blob: BlobPickup, key: string) => {
-      const dx = p.x - blob.x;
-      const dz = p.z - blob.z;
-      const dist = Math.sqrt(dx * dx + dz * dz);
+  // Check if player is close enough to any blob pickups (spatially filtered).
+  checkBlobPickups(p: PlayerState, blobGrid: Map<string, string[]>) {
+    const t = Math.min(p.score / MAX_SCORE_FOR_SCALE, 1);
+    const visualSize = 1 + t * 9;
+    const pickupR = visualSize * 0.6;
+    const pickupRSq = pickupR * pickupR;
 
-      const t = Math.min(p.score / MAX_SCORE_FOR_SCALE, 1);
-      const visualSize = 1 + t * 9;
+    const minIx = Math.floor((p.x - pickupR) / BLOB_CELL_SIZE);
+    const maxIx = Math.floor((p.x + pickupR) / BLOB_CELL_SIZE);
+    const minIz = Math.floor((p.z - pickupR) / BLOB_CELL_SIZE);
+    const maxIz = Math.floor((p.z + pickupR) / BLOB_CELL_SIZE);
 
-      if (dist < visualSize * 0.6) {
-        // Logarithmic growth: fast at start, slower as player grows
-        const growthFactor = 1 / (1 + Math.log1p(p.score / 500));
-        p.size += blob.value * 0.02 * growthFactor;
-        p.score += blob.value;
-        this.state.blobs.delete(key);
-        this.spawnBlobs(1);
+    for (let ix = minIx; ix <= maxIx; ix++) {
+      for (let iz = minIz; iz <= maxIz; iz++) {
+        const ids = blobGrid.get(`${ix},${iz}`);
+        if (!ids) continue;
+        for (let i = 0; i < ids.length; i++) {
+          const key = ids[i];
+          const blob = this.state.blobs.get(key);
+          if (!blob) continue;
+
+          const dx = p.x - blob.x;
+          const dz = p.z - blob.z;
+          if (dx * dx + dz * dz >= pickupRSq) continue;
+
+          // Slower stat growth at high score (visual scale is score-driven; this stays in sync loosely).
+          const growthFactor = 1 / (1 + Math.log1p(p.score / 800));
+          p.size += blob.value * 0.014 * growthFactor;
+          p.score += blob.value;
+          this.state.blobs.delete(key);
+          this.spawnBlobs(1);
+        }
       }
-    });
+    }
   }
 
   getVisualScale(p: PlayerState): number {
@@ -202,6 +266,7 @@ export class GameRoom extends Room {
       blob.x = (Math.random() - 0.5) * MAP_SIZE * 1.8;
       blob.z = (Math.random() - 0.5) * MAP_SIZE * 1.8;
       blob.isSpecial = false;
+      blob.color = randomBlobPresetColor();
 
       const roll = Math.random();
       if (roll < SPECIAL_BLOB_CHANCE) {

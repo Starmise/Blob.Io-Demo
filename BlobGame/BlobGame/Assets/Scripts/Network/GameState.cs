@@ -34,6 +34,7 @@ public partial class BlobPickup : Schema
     [Type(2, "float32")] public float z = default;
     [Type(3, "float32")] public float value = default;
     [Type(4, "boolean")] public bool isSpecial = default;
+    [Type(5, "string")] public string color = default;
 }
 
 /// <summary>

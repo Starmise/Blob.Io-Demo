@@ -1,7 +1,8 @@
 using UnityEngine;
 
 /// <summary>
-///  View for a blob pickup item. It scales and colors itself based on the value of the pickup.
+/// View for a blob pickup: scale from value, tint from server hex (normal blobs only).
+/// Special items use <see cref="specialSprite"/> with no tint.
 /// </summary>
 public class BlobPickupView : MonoBehaviour
 {
@@ -24,6 +25,7 @@ public class BlobPickupView : MonoBehaviour
             {
                 spriteRenderer.enabled = true;
                 if (specialSprite != null) spriteRenderer.sprite = specialSprite;
+                spriteRenderer.color = Color.white;
             }
             return;
         }
@@ -37,13 +39,16 @@ public class BlobPickupView : MonoBehaviour
         var meshRend = GetComponentInChildren<MeshRenderer>();
         if (meshRend == null) return;
 
-        meshRend.material.color = data.value switch
-        {
-            1 => Color.white,
-            2 => Color.cyan,
-            5 => Color.red,
-            10 => Color.magenta,
-            _ => Color.green
-        };
+        if (TryParseBlobColor(data.color, out Color blobCol))
+            meshRend.material.color = blobCol;
+        else
+            meshRend.material.color = Color.HSVToRGB(Random.value, 0.55f, 0.95f);
+    }
+
+    static bool TryParseBlobColor(string hex, out Color color)
+    {
+        color = default;
+        if (string.IsNullOrEmpty(hex)) return false;
+        return ColorUtility.TryParseHtmlString(hex, out color);
     }
 }

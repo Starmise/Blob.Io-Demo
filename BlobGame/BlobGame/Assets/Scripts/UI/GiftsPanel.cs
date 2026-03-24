@@ -29,30 +29,49 @@ public class GiftsPanel : MonoBehaviour
     private readonly int[] _kills = { 0, 0, 0, 0, 0, 0, 8, 0 };
 
     private bool[] _claimed;
-    private float _sessionStart;
+    private bool _wired;
 
-    void Start()
+    /** Set when the game scene loads (SidePanelsUI). Not when GiftsPanel opens — that GameObject starts inactive. */
+    private static float _playSessionStartRealtime;
+    private static bool _playSessionStarted;
+
+    /// <summary>Call from an always-active object when the game scene is ready (e.g. SidePanelsUI.Start).</summary>
+    public static void InitializePlaySession()
     {
-        // Timer starts when player joins the game, not when panel opens
-        _sessionStart = Time.realtimeSinceStartup;
+        if (_playSessionStarted) return;
+        _playSessionStartRealtime = Time.realtimeSinceStartup;
+        _playSessionStarted = true;
+    }
 
-        _claimed = new bool[gifts.Length];
+    void OnEnable()
+    {
+        if (!_playSessionStarted)
+            InitializePlaySession();
 
-        for (int i = 0; i < gifts.Length && i < _unlockTimes.Length; i++)
+        if (!_wired)
         {
-            gifts[i].unlockAfterSeconds = _unlockTimes[i];
-            gifts[i].points = _points[i];
-            gifts[i].spins = _spins[i];
-            gifts[i].kills = _kills[i];
+            _claimed = new bool[gifts.Length];
 
-            int index = i;
-            gifts[i].claimButton.onClick.AddListener(() => ClaimGift(index));
+            for (int i = 0; i < gifts.Length && i < _unlockTimes.Length; i++)
+            {
+                gifts[i].unlockAfterSeconds = _unlockTimes[i];
+                gifts[i].points = _points[i];
+                gifts[i].spins = _spins[i];
+                gifts[i].kills = _kills[i];
+
+                int index = i;
+                gifts[i].claimButton.onClick.AddListener(() => ClaimGift(index));
+            }
+
+            _wired = true;
         }
     }
 
     void Update()
     {
-        float elapsed = Time.realtimeSinceStartup - _sessionStart;
+        if (_claimed == null) return;
+
+        float elapsed = Time.realtimeSinceStartup - _playSessionStartRealtime;
 
         for (int i = 0; i < gifts.Length; i++)
         {
@@ -82,9 +101,9 @@ public class GiftsPanel : MonoBehaviour
 
     void ClaimGift(int index)
     {
-        if (_claimed[index]) return;
+        if (_claimed == null || _claimed[index]) return;
 
-        float elapsed = Time.realtimeSinceStartup - _sessionStart;
+        float elapsed = Time.realtimeSinceStartup - _playSessionStartRealtime;
         if (elapsed < gifts[index].unlockAfterSeconds) return;
 
         _claimed[index] = true;

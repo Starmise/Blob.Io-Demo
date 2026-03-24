@@ -12,6 +12,12 @@ public class SpinPanel : MonoBehaviour
     private float _freeTimer = 180f; // 3 minutes
     private bool _timerReady = false;
 
+    void Awake()
+    {
+        if (GetComponent<RectMask2D>() == null)
+            gameObject.AddComponent<RectMask2D>();
+    }
+
     void OnEnable() => RefreshSpinButton();
     void OnDisable() { }
 
