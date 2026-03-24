@@ -216,3 +216,8 @@ MonoBehaviour:
   pulseSpeed: 4
   floatAmount: 0.08
   floatSpeed: 2.2
+  slowSpriteTint: {r: 1, g: 0.55, b: 0.55, a: 1}
+  specialLabelLocalY: 1.9
+  specialLabelCharacterSize: 0.12
+  specialLabelFontSize: 56
+  specialLabelOutlineOffset: 0.015

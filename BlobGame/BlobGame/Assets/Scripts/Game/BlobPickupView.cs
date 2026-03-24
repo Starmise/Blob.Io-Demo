@@ -23,6 +23,15 @@ public class BlobPickupView : MonoBehaviour
     [Header("Slow debuff (same sprite as boost, tinted)")]
     [SerializeField] Color slowSpriteTint = new Color(1f, 0.55f, 0.55f, 1f);
 
+    [Header("Special item value label")]
+    [SerializeField] float specialLabelLocalY = 1.35f;
+    [SerializeField] float specialLabelCharacterSize = 0.12f;
+    [SerializeField] int specialLabelFontSize = 48;
+    [SerializeField] float specialLabelOutlineOffset = 0.015f;
+
+    GameObject _specialValueLabelRoot;
+    static Font s_labelFont;
+
     public void Init(BlobPickup data)
     {
         _isSpritePickup = data.isSpecial || data.isSpeedBoost || data.isSpeedSlow;
@@ -49,6 +58,9 @@ public class BlobPickupView : MonoBehaviour
                 else
                     spriteRenderer.color = Color.white;
             }
+
+            if (data.isSpecial)
+                SetupSpecialValueLabel(Mathf.RoundToInt(data.value));
             return;
         }
 
@@ -83,6 +95,56 @@ public class BlobPickupView : MonoBehaviour
         float pulse = 1f + Mathf.Sin(t * pulseSpeed) * pulseAmount;
         transform.localScale = _baseScale * pulse;
         transform.position = _basePos + Vector3.up * (Mathf.Sin(t * floatSpeed) * floatAmount);
+    }
+
+    void SetupSpecialValueLabel(int points)
+    {
+        if (_specialValueLabelRoot != null)
+            Destroy(_specialValueLabelRoot);
+
+        if (s_labelFont == null)
+            s_labelFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+        _specialValueLabelRoot = new GameObject("SpecialValueBillboard");
+        _specialValueLabelRoot.transform.SetParent(transform, false);
+        _specialValueLabelRoot.transform.localPosition = new Vector3(0f, specialLabelLocalY, 0f);
+        _specialValueLabelRoot.transform.localRotation = Quaternion.identity;
+
+        // World-space uGUI Canvas often fails to show on small scaled pickups; TextMesh renders as geometry.
+        string text = points.ToString();
+        float o = specialLabelOutlineOffset;
+
+        void AddLayer(string name, Color color, Vector3 localOffset, int sortOrder)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(_specialValueLabelRoot.transform, false);
+            go.transform.localPosition = localOffset;
+            go.transform.localRotation = Quaternion.identity;
+            var tm = go.AddComponent<TextMesh>();
+            tm.text = text;
+            tm.font = s_labelFont;
+            tm.fontSize = specialLabelFontSize;
+            tm.fontStyle = FontStyle.Bold;
+            tm.anchor = TextAnchor.MiddleCenter;
+            tm.alignment = TextAlignment.Center;
+            tm.characterSize = specialLabelCharacterSize;
+            tm.color = color;
+            var mr = go.GetComponent<MeshRenderer>();
+            mr.sortingOrder = sortOrder;
+        }
+
+        // Black outline (cardinal + diagonals, slightly in front for z-fight)
+        Vector3 zBump = new Vector3(0f, 0f, 0.0005f);
+        AddLayer("Outline", Color.black, new Vector3(o, 0f, 0f) + zBump, 0);
+        AddLayer("Outline", Color.black, new Vector3(-o, 0f, 0f) + zBump, 0);
+        AddLayer("Outline", Color.black, new Vector3(0f, o, 0f) + zBump, 0);
+        AddLayer("Outline", Color.black, new Vector3(0f, -o, 0f) + zBump, 0);
+        AddLayer("Outline", Color.black, new Vector3(o, o, 0f) + zBump, 0);
+        AddLayer("Outline", Color.black, new Vector3(-o, o, 0f) + zBump, 0);
+        AddLayer("Outline", Color.black, new Vector3(o, -o, 0f) + zBump, 0);
+        AddLayer("Outline", Color.black, new Vector3(-o, -o, 0f) + zBump, 0);
+
+        AddLayer("Fill", Color.white, Vector3.zero, 1);
     }
 
     static bool TryParseBlobColor(string hex, out Color color)

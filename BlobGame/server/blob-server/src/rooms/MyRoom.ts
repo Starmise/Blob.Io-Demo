@@ -11,9 +11,9 @@ const BLOB_COUNT = 4000;
 const BLOB_CELL_SIZE = 8;
 const INVINCIBLE_SEC = 10;
 const BLOB_VALUES = [1, 2, 5, 10];
-const SPECIAL_BLOB_CHANCE = 0.01;
-const SPEED_BLOB_CHANCE = 0.02;
-const SLOW_BLOB_CHANCE = 0.02;
+const SPECIAL_BLOB_CHANCE = 0.005;
+const SPEED_BLOB_CHANCE = 0.01;
+const SLOW_BLOB_CHANCE = 0.01;
 const SPEED_BOOST_MULTIPLIER = 1.35;
 /** Mirrors boost strength: move speed × this while slow debuff is active. */
 const SPEED_SLOW_MULTIPLIER = 1 / SPEED_BOOST_MULTIPLIER;
