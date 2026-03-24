@@ -46,7 +46,7 @@ public class GameUI : MonoBehaviour
 
         if (local == null) return;
 
-        txtScore.text = $"{PlayerController.FormatNumber(local.score)}";
+        txtScore.text = $"{PlayerController.FormatNumber(PlayerController.GetTotalDisplayedScore(local))}";
         txtKills.text = $"{local.kills}";
     }
 
@@ -61,7 +61,7 @@ public class GameUI : MonoBehaviour
         {
             sorted.Add((sessionId, state));
         });
-        sorted = sorted.OrderByDescending(p => p.state.score).ToList();
+        sorted = sorted.OrderByDescending(p => PlayerController.GetTotalDisplayedScore(p.state)).ToList();
 
         int localRank = sorted.FindIndex(p => p.id == localId);
         if (localRank < 0) return;
@@ -91,7 +91,7 @@ public class GameUI : MonoBehaviour
             var txt = go.GetComponentInChildren<Text>();
             int rank = start + i + 1;
 
-            txt.text = $"{rank}. {p.state.name}  {PlayerController.FormatNumber(p.state.score)}";
+            txt.text = $"{rank}. {p.state.name}  {PlayerController.FormatNumber(PlayerController.GetTotalDisplayedScore(p.state))}";
 
             // highlight local player
             if (p.id == localId)

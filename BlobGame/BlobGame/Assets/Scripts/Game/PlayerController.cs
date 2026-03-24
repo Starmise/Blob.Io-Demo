@@ -45,6 +45,23 @@ public class PlayerController : MonoBehaviour
 
     private string _currentSkinId = "";
     private Vector3 _shadowBaseLocalScale = Vector3.one;
+    /// <summary>Visual-only split mass (mesh + labels). Never duplicate the player root — it includes Camera and PlayerController.</summary>
+    private GameObject _splitCloneRoot;
+    private MeshRenderer _splitCloneMeshRenderer;
+    private Text _cloneNameLabel;
+    private Text _cloneScoreLabel;
+    private Transform _splitCloneShadowTransform;
+    private Vector3 _splitCloneShadowBaseLocalScale = Vector3.one;
+
+    /// <summary>Combined mass score (leaderboard / leader checks).</summary>
+    public static int GetTotalDisplayedScore(PlayerState s)
+    {
+        if (s == null) return 0;
+        return s.score + (s.hasSplit ? s.splitScore : 0);
+    }
+
+    /// <summary>Split mass root for crowns etc. Built when hasSplit; null otherwise.</summary>
+    public Transform SplitCloneRoot => _splitCloneRoot != null ? _splitCloneRoot.transform : null;
 
     void Awake()
     {
@@ -104,10 +121,17 @@ public class PlayerController : MonoBehaviour
 
         // Update transform and visuals based on the latest synchronized state
         UpdateTransform();
+        UpdateSplitCloneVisual();
         UpdateRemoteFacingFromState();
         UpdateVisualState();
         UpdateLabels();
         BillboardLabels();
+    }
+
+    void OnDestroy()
+    {
+        if (_splitCloneRoot != null)
+            Destroy(_splitCloneRoot);
     }
 
     void LateUpdate()
@@ -115,6 +139,7 @@ public class PlayerController : MonoBehaviour
         UpdateInvincibilityShieldScale();
         UpdateSpeedLinesVfx();
         UpdateShadowScale();
+        UpdateSplitCloneShadowScale();
     }
 
     /// <summary>
@@ -175,6 +200,29 @@ public class PlayerController : MonoBehaviour
             _shadowBaseLocalScale.x * comp.x,
             _shadowBaseLocalScale.y * comp.y,
             _shadowBaseLocalScale.z * comp.z);
+    }
+
+    void UpdateSplitCloneShadowScale()
+    {
+        if (_splitCloneShadowTransform == null || _splitCloneRoot == null) return;
+
+        Vector3 s = _splitCloneRoot.transform.localScale;
+        float sx = s.x;
+        float sz = s.z;
+        if (sx <= 1e-4f || sz <= 1e-4f) return;
+
+        float horiz = Mathf.Max(sx, sz);
+        float worldXZ = shadowWorldXZMultiplier * horiz;
+        float worldY = shadowWorldYMultiplier * horiz;
+
+        var comp = new Vector3(
+            worldXZ / sx,
+            worldY / s.y,
+            worldXZ / sz);
+        _splitCloneShadowTransform.localScale = new Vector3(
+            _splitCloneShadowBaseLocalScale.x * comp.x,
+            _splitCloneShadowBaseLocalScale.y * comp.y,
+            _splitCloneShadowBaseLocalScale.z * comp.z);
     }
 
     void SetupSpeedLinesVfxInstance()
@@ -270,21 +318,124 @@ public class PlayerController : MonoBehaviour
             _targetPos,
             Time.deltaTime * 15f);
 
-        // Must match server `MAX_SCORE_FOR_SCALE` in MyRoom.ts (visual growth vs score).
-        const float MAX_SCORE = 200000f;
-        const float MIN_SCALE = 1f;
-        const float MAX_SCALE = 10f;
-
-        float t = Mathf.Clamp01((float)_state.score / MAX_SCORE);
-        float targetScale = Mathf.Lerp(MIN_SCALE, MAX_SCALE, t);
-
-        // Breathing animation subtle Y squish using a sine wave
+        float targetScale = GetTargetScaleForScore(_state.score);
         float breathe = 1f + Mathf.Sin(Time.time * 2f) * 0.1f;
 
         transform.localScale = Vector3.Lerp(
             transform.localScale,
             new Vector3(targetScale, targetScale * breathe, targetScale),
             Time.deltaTime * 5f);
+    }
+
+    /// <summary>Visual radius scale from mass score (matches server MAX_SCORE_FOR_SCALE curve).</summary>
+    static float GetTargetScaleForScore(int score)
+    {
+        const float MAX_SCORE = 200000f;
+        const float MIN_SCALE = 1f;
+        const float MAX_SCALE = 10f;
+        float t = Mathf.Clamp01((float)score / MAX_SCORE);
+        return Mathf.Lerp(MIN_SCALE, MAX_SCALE, t);
+    }
+
+    /// <summary>Builds a minimal clone: mesh only + duplicated world Canvas (no camera, no controls). Server moves both masses.</summary>
+    void EnsureSplitCloneBuilt()
+    {
+        if (_splitCloneRoot != null || bodyRenderer == null) return;
+
+        _splitCloneRoot = new GameObject("SplitClone");
+        _splitCloneRoot.transform.SetParent(transform.parent);
+
+        var meshGo = new GameObject("BlobMesh");
+        meshGo.transform.SetParent(_splitCloneRoot.transform, false);
+        var mf = meshGo.AddComponent<MeshFilter>();
+        _splitCloneMeshRenderer = meshGo.AddComponent<MeshRenderer>();
+        var srcMf = bodyRenderer.GetComponent<MeshFilter>();
+        if (srcMf != null)
+            mf.sharedMesh = srcMf.sharedMesh;
+        _splitCloneMeshRenderer.sharedMaterial = bodyRenderer.sharedMaterial;
+
+        if (shadowTransform != null)
+        {
+            var sh = Instantiate(shadowTransform.gameObject, _splitCloneRoot.transform);
+            sh.name = "shadow";
+            _splitCloneShadowTransform = sh.transform;
+            _splitCloneShadowBaseLocalScale = _splitCloneShadowTransform.localScale;
+        }
+
+        var srcCanvas = transform.Find("Canvas");
+        if (srcCanvas != null)
+        {
+            var canvasGo = Instantiate(srcCanvas.gameObject, _splitCloneRoot.transform);
+            canvasGo.name = "Canvas";
+            var srcRt = srcCanvas.GetComponent<RectTransform>();
+            var dstRt = canvasGo.GetComponent<RectTransform>();
+            if (srcRt != null && dstRt != null)
+            {
+                dstRt.localPosition = srcRt.localPosition;
+                dstRt.localRotation = srcRt.localRotation;
+                dstRt.localScale = srcRt.localScale;
+            }
+
+            var canvas = canvasGo.GetComponent<Canvas>();
+            if (canvas != null && Camera.main != null)
+                canvas.worldCamera = Camera.main;
+
+            var raycaster = canvasGo.GetComponent<GraphicRaycaster>();
+            if (raycaster != null)
+                raycaster.enabled = false;
+
+            var texts = canvasGo.GetComponentsInChildren<Text>(true);
+            if (texts.Length > 0) _cloneNameLabel = texts[0];
+            if (texts.Length > 1) _cloneScoreLabel = texts[1];
+        }
+    }
+
+    void UpdateSplitCloneVisual()
+    {
+        if (_state == null || bodyRenderer == null) return;
+
+        if (_state.hasSplit)
+        {
+            EnsureSplitCloneBuilt();
+            if (_splitCloneRoot == null) return;
+
+            // Match primary blob: same position/scale follow smoothing (avoids copy feeling mushy vs. snappy).
+            const float posLerp = 15f;
+            const float scaleLerp = 12f;
+            Vector3 cloneTargetPos = new Vector3(_state.splitX, _state.y, _state.splitZ);
+            _splitCloneRoot.transform.position = Vector3.Lerp(
+                _splitCloneRoot.transform.position,
+                cloneTargetPos,
+                Time.deltaTime * posLerp);
+            float targetScale = GetTargetScaleForScore(_state.splitScore);
+            float breathe = 1f + Mathf.Sin(Time.time * 2f) * 0.1f;
+            _splitCloneRoot.transform.localScale = Vector3.Lerp(
+                _splitCloneRoot.transform.localScale,
+                new Vector3(targetScale, targetScale * breathe, targetScale),
+                Time.deltaTime * scaleLerp);
+        }
+        else if (_splitCloneRoot != null)
+        {
+            Destroy(_splitCloneRoot);
+            _splitCloneRoot = null;
+            _splitCloneMeshRenderer = null;
+            _cloneNameLabel = null;
+            _cloneScoreLabel = null;
+            _splitCloneShadowTransform = null;
+        }
+    }
+
+    Vector3 GetSplitLaunchDirection()
+    {
+        if (_lastMoveDirXZ.sqrMagnitude > 1e-6f)
+            return _lastMoveDirXZ;
+        if (Camera.main != null)
+        {
+            var f = Vector3.ProjectOnPlane(Camera.main.transform.forward, Vector3.up).normalized;
+            if (f.sqrMagnitude > 1e-6f)
+                return f;
+        }
+        return Vector3.forward;
     }
 
     /// <summary>
@@ -297,6 +448,11 @@ public class PlayerController : MonoBehaviour
 
         if (scoreLabel != null)
             scoreLabel.text = FormatNumber(_state.score);
+
+        if (_cloneNameLabel != null)
+            _cloneNameLabel.text = _state.name;
+        if (_cloneScoreLabel != null && _state.hasSplit)
+            _cloneScoreLabel.text = FormatNumber(_state.splitScore);
     }
 
     /// <summary>
@@ -317,6 +473,15 @@ public class PlayerController : MonoBehaviour
             scoreLabel.transform.LookAt(
                 scoreLabel.transform.position + cam.rotation * Vector3.forward,
                 cam.rotation * Vector3.up);
+
+        if (_cloneNameLabel != null)
+            _cloneNameLabel.transform.LookAt(
+                _cloneNameLabel.transform.position + cam.rotation * Vector3.forward,
+                cam.rotation * Vector3.up);
+        if (_cloneScoreLabel != null)
+            _cloneScoreLabel.transform.LookAt(
+                _cloneScoreLabel.transform.position + cam.rotation * Vector3.forward,
+                cam.rotation * Vector3.up);
     }
 
     /// <summary>
@@ -333,7 +498,11 @@ public class PlayerController : MonoBehaviour
             {
                 var mat = skinDatabase.GetMaterial(_currentSkinId);
                 if (mat != null)
+                {
                     bodyRenderer.material = mat;
+                    if (_splitCloneMeshRenderer != null)
+                        _splitCloneMeshRenderer.material = mat;
+                }
             }
         }
 
@@ -342,6 +511,9 @@ public class PlayerController : MonoBehaviour
 
         if (!_isLocal)
             gameObject.SetActive(_state.isAlive);
+
+        if (_splitCloneRoot != null)
+            _splitCloneRoot.SetActive(_state.isAlive && _state.hasSplit);
     }
 
     /// <summary>
@@ -353,11 +525,8 @@ public class PlayerController : MonoBehaviour
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
 
-        if (Mathf.Abs(h) < 0.01f && Mathf.Abs(v) < 0.01f)
-            return;
-
         // Relative direction based on camera orientation
-        var cam = Camera.main.transform;
+        var cam = Camera.main != null ? Camera.main.transform : transform;
         var forward = Vector3.ProjectOnPlane(cam.forward, Vector3.up).normalized;
         var right = Vector3.ProjectOnPlane(cam.right, Vector3.up).normalized;
 
@@ -365,7 +534,15 @@ public class PlayerController : MonoBehaviour
         if (dir.sqrMagnitude > 1e-6f)
             _lastMoveDirXZ = new Vector3(dir.x, 0f, dir.z).normalized;
 
-        // Send movement to server
+        if (Input.GetKeyDown(KeyCode.E) && !_state.hasSplit && NetworkManager.Instance != null)
+        {
+            Vector3 launch = GetSplitLaunchDirection();
+            NetworkManager.Instance.SendSplit(launch.x, launch.z);
+        }
+
+        if (Mathf.Abs(h) < 0.01f && Mathf.Abs(v) < 0.01f)
+            return;
+
         NetworkManager.Instance.SendMove(dir.x, dir.z);
     }
 

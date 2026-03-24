@@ -19,6 +19,12 @@ export class PlayerState extends Schema {
   @type("boolean") speedBoostActive: boolean = false;
   /** Synced for clients (slow debuff pickup VFX). */
   @type("boolean") speedSlowActive: boolean = false;
+  /** Second mass while split (Agar-style); primary stays at x,z / score / size. */
+  @type("boolean") hasSplit: boolean = false;
+  @type("float32") splitX: number = 0;
+  @type("float32") splitZ: number = 0;
+  @type("int32") splitScore: number = 0;
+  @type("float32") splitSize: number = 0;
 }
 
 // Define the blob pickup schema

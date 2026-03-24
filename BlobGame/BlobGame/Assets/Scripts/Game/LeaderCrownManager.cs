@@ -1,20 +1,19 @@
 using UnityEngine;
-using Colyseus.Schema;
 
 /// <summary>
-/// Instantiates a crown prefab as a child of the player
-/// with the highest score. When the leader changes, the
-/// current crown is destroyed and re-instantiated on the new leader.
+/// Instantiates crown prefab(s) on the highest total-score player. When split, places a crown on both masses.
+/// Runs in LateUpdate so split clone roots exist after PlayerController builds them.
 /// </summary>
 public class LeaderCrownManager : MonoBehaviour
 {
     [Header("References")]
     public GameObject crownPrefab;
 
-    private GameObject _currentCrown;
-    private string _currentLeaderId;
+    private GameObject _crownPrimary;
+    private GameObject _crownClone;
+    private string _leaderId;
 
-    void Update()
+    void LateUpdate()
     {
         if (NetworkManager.Instance == null ||
             NetworkManager.Instance.Room == null ||
@@ -28,61 +27,69 @@ public class LeaderCrownManager : MonoBehaviour
 
         string bestId = null;
         PlayerState bestState = null;
+        int bestTotal = -1;
 
         room.State.players.ForEach((sessionId, state) =>
         {
             if (!state.isAlive) return;
 
-            if (bestState == null || state.score > bestState.score)
+            int total = PlayerController.GetTotalDisplayedScore(state);
+            if (total > bestTotal)
             {
+                bestTotal = total;
                 bestState = state;
                 bestId = sessionId;
             }
         });
 
-        // No alive players
-        if (bestId == null)
+        if (bestId == null || bestState == null)
         {
-            if (_currentCrown != null)
-            {
-                Destroy(_currentCrown);
-                _currentCrown = null;
-                _currentLeaderId = null;
-            }
+            ClearCrowns();
             return;
         }
 
-        // Same leader as before, nothing to do.
-        if (bestId == _currentLeaderId && _currentCrown != null)
-            return;
-
-        // log when we are about to change leader/crown
-        if (bestId != _currentLeaderId)
+        if (!GameManager.Instance.TryGetPlayer(bestId, out var controller) || controller == null)
         {
-            Debug.Log($"[LeaderCrownManager] leader changed from '{_currentLeaderId}' to '{bestId}'");
-        }
-
-        // Leader changed: destroy old crown
-        if (_currentCrown != null)
-        {
-            Destroy(_currentCrown);
-            _currentCrown = null;
-        }
-
-        // Get PlayerController for new leader
-        if (!GameManager.Instance.TryGetPlayer(bestId, out var controller) ||
-            controller == null)
-        {
-            Debug.LogWarning($"[LeaderCrownManager] Could not find PlayerController for leader {bestId}");
-            _currentLeaderId = null;
+            ClearCrowns();
             return;
         }
 
-        // Instantiate new crown as child of the leader
-        _currentCrown = Instantiate(crownPrefab, controller.transform);
-        _currentCrown.transform.localPosition = Vector3.zero;
-        _currentLeaderId = bestId;
-        Debug.Log($"[LeaderCrownManager] instantiated crown on player {bestId}");
+        bool wantCloneCrown = bestState.hasSplit && controller.SplitCloneRoot != null;
+        bool haveCloneCrown = _crownClone != null;
+
+        if (bestId == _leaderId && _crownPrimary != null && wantCloneCrown == haveCloneCrown)
+            return;
+
+        RebuildCrowns(controller, wantCloneCrown);
+        _leaderId = bestId;
+    }
+
+    void RebuildCrowns(PlayerController controller, bool addCloneCrown)
+    {
+        ClearCrowns();
+
+        _crownPrimary = Instantiate(crownPrefab, controller.transform);
+        _crownPrimary.transform.localPosition = Vector3.zero;
+
+        if (addCloneCrown && controller.SplitCloneRoot != null)
+        {
+            _crownClone = Instantiate(crownPrefab, controller.SplitCloneRoot);
+            _crownClone.transform.localPosition = Vector3.zero;
+        }
+    }
+
+    void ClearCrowns()
+    {
+        if (_crownPrimary != null)
+        {
+            Destroy(_crownPrimary);
+            _crownPrimary = null;
+        }
+        if (_crownClone != null)
+        {
+            Destroy(_crownClone);
+            _crownClone = null;
+        }
+        _leaderId = null;
     }
 }
-

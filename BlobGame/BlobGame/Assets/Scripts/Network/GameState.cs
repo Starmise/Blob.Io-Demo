@@ -23,6 +23,11 @@ public partial class PlayerState : Schema
     [Type(12, "string")] public string skinId = default;
     [Type(13, "boolean")] public bool speedBoostActive = default;
     [Type(14, "boolean")] public bool speedSlowActive = default;
+    [Type(15, "boolean")] public bool hasSplit = default;
+    [Type(16, "float32")] public float splitX = default;
+    [Type(17, "float32")] public float splitZ = default;
+    [Type(18, "int32")] public int splitScore = default;
+    [Type(19, "float32")] public float splitSize = default;
 }
 
 /// <summary>

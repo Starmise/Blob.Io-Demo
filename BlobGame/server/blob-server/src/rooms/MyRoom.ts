@@ -28,6 +28,11 @@ const SPEED_LOG_WEIGHT = 0.055;
 // Safety floor for absurd scores; normal play stays above this via the soft curve.
 const MIN_SPEED_RATIO = 0.92;
 
+/** Center-to-center distance between split halves (smaller = easier to merge back). */
+const SPLIT_SEPARATION = 1.65;
+/** Merge when distance < (rA + rB) * this. */
+const MERGE_DIST_FACTOR = 0.42;
+
 /** Pickup tint options — edit to taste; must stay in sync with client expectations. */
 const BLOB_PICKUP_COLORS = [
   "#ff6b6b",
@@ -60,6 +65,10 @@ export class GameRoom extends Room {
     // Movement
     this.onMessage("move", (client, data: { x: number; z: number }) => {
       this.handleMove(client.sessionId, data.x, data.z);
+    });
+
+    this.onMessage("split", (client, data: { x?: number; z?: number }) => {
+      this.handleSplit(client.sessionId, data?.x ?? 0, data?.z ?? 0);
     });
 
     // Buy skin
@@ -105,6 +114,9 @@ export class GameRoom extends Room {
       this._speedSlowUntil.delete(client.sessionId);
       p.speedBoostActive = false;
       p.speedSlowActive = false;
+      p.hasSplit = false;
+      p.splitScore = 0;
+      p.splitSize = 0;
     });
   }
 
@@ -122,6 +134,9 @@ export class GameRoom extends Room {
     p.invincibilityEndTime = Date.now() / 1000 + INVINCIBLE_SEC; // Invincibility on spawn for 10 seconds
     p.speedBoostActive = false;
     p.speedSlowActive = false;
+    p.hasSplit = false;
+    p.splitScore = 0;
+    p.splitSize = 0;
     this.state.players.set(client.sessionId, p);
     console.log(`[JOIN] ${p.name}`);
   }
@@ -145,6 +160,11 @@ export class GameRoom extends Room {
       }
       p.x = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.x)); // Keep player within bounds
       p.z = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.z)); // Keep player within bounds
+      if (p.hasSplit) {
+        p.splitX = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.splitX));
+        p.splitZ = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.splitZ));
+      }
+      this.tryMergeSplitHalves(p);
       this.checkBlobPickups(p, blobGrid);
 
       const untilBoost = this._speedBoostUntil.get(p.id) ?? 0;
@@ -182,8 +202,8 @@ export class GameRoom extends Room {
     const len = Math.sqrt(inputX * inputX + inputZ * inputZ);
     if (len === 0) return;
 
-    // Slowdown vs score: same BASE_SPEED at low score, milder drop-off when huge.
-    const speedT = Math.log1p(p.score / SPEED_SCORE_REF) * SPEED_LOG_WEIGHT;
+    const totalScore = p.hasSplit ? p.score + p.splitScore : p.score;
+    const speedT = Math.log1p(totalScore / SPEED_SCORE_REF) * SPEED_LOG_WEIGHT;
     const speedMultiplier = 1 / (1 + speedT);
     let speed = Math.max(
       BASE_SPEED * speedMultiplier,
@@ -198,23 +218,96 @@ export class GameRoom extends Room {
       speed *= SPEED_SLOW_MULTIPLIER;
     }
     const dt = 1 / 20;
-    p.x += (inputX / len) * speed * dt;
-    p.z += (inputZ / len) * speed * dt;
+    const dx = (inputX / len) * speed * dt;
+    const dz = (inputZ / len) * speed * dt;
+    p.x += dx;
+    p.z += dz;
     p.x = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.x));
     p.z = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.z));
+    if (p.hasSplit) {
+      p.splitX += dx;
+      p.splitZ += dz;
+      p.splitX = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.splitX));
+      p.splitZ = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.splitZ));
+    }
+  }
+
+  private handleSplit(sessionId: string, dirX: number, dirZ: number) {
+    const p = this.state.players.get(sessionId);
+    if (!p || !p.isAlive || p.hasSplit) return;
+    if (p.score < 2) return;
+    const total = p.score;
+    const half = Math.floor(total / 2);
+    if (half < 1) return;
+
+    p.score = half;
+    p.splitScore = half;
+    const sz = p.size;
+    p.size = sz * 0.5;
+    p.splitSize = sz * 0.5;
+
+    const cx = p.x;
+    const cz = p.z;
+    const len = Math.hypot(dirX, dirZ);
+    let ox: number;
+    let oz: number;
+    if (len > 1e-6) {
+      ox = (dirX / len) * SPLIT_SEPARATION * 0.5;
+      oz = (dirZ / len) * SPLIT_SEPARATION * 0.5;
+    } else {
+      const angle = Math.random() * Math.PI * 2;
+      ox = Math.cos(angle) * SPLIT_SEPARATION * 0.5;
+      oz = Math.sin(angle) * SPLIT_SEPARATION * 0.5;
+    }
+    // Primary stays behind, copy launches along facing (+dir)
+    p.x = cx - ox;
+    p.z = cz - oz;
+    p.splitX = cx + ox;
+    p.splitZ = cz + oz;
+    p.hasSplit = true;
+  }
+
+  private tryMergeSplitHalves(p: PlayerState) {
+    if (!p.hasSplit) return;
+    const dx = p.x - p.splitX;
+    const dz = p.z - p.splitZ;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    const ra = this.getVisualScaleFromScore(p.score) * 0.4;
+    const rb = this.getVisualScaleFromScore(p.splitScore) * 0.4;
+    if (dist < (ra + rb) * MERGE_DIST_FACTOR) {
+      p.score += p.splitScore;
+      p.size += p.splitSize;
+      p.hasSplit = false;
+      p.splitScore = 0;
+      p.splitSize = 0;
+    }
   }
 
   // Check if player is close enough to any blob pickups (spatially filtered).
   checkBlobPickups(p: PlayerState, blobGrid: Map<string, string[]>) {
-    const t = Math.min(p.score / MAX_SCORE_FOR_SCALE, 1);
+    this.checkPickupsForMass(p, p.x, p.z, true, blobGrid);
+    if (p.hasSplit) {
+      this.checkPickupsForMass(p, p.splitX, p.splitZ, false, blobGrid);
+    }
+  }
+
+  private checkPickupsForMass(
+    p: PlayerState,
+    px: number,
+    pz: number,
+    isPrimary: boolean,
+    blobGrid: Map<string, string[]>,
+  ) {
+    const massScore = isPrimary ? p.score : p.splitScore;
+    const t = Math.min(massScore / MAX_SCORE_FOR_SCALE, 1);
     const visualSize = 1 + t * 9;
     const pickupR = visualSize * 0.6;
     const pickupRSq = pickupR * pickupR;
 
-    const minIx = Math.floor((p.x - pickupR) / BLOB_CELL_SIZE);
-    const maxIx = Math.floor((p.x + pickupR) / BLOB_CELL_SIZE);
-    const minIz = Math.floor((p.z - pickupR) / BLOB_CELL_SIZE);
-    const maxIz = Math.floor((p.z + pickupR) / BLOB_CELL_SIZE);
+    const minIx = Math.floor((px - pickupR) / BLOB_CELL_SIZE);
+    const maxIx = Math.floor((px + pickupR) / BLOB_CELL_SIZE);
+    const minIz = Math.floor((pz - pickupR) / BLOB_CELL_SIZE);
+    const maxIz = Math.floor((pz + pickupR) / BLOB_CELL_SIZE);
 
     for (let ix = minIx; ix <= maxIx; ix++) {
       for (let iz = minIz; iz <= maxIz; iz++) {
@@ -225,8 +318,8 @@ export class GameRoom extends Room {
           const blob = this.state.blobs.get(key);
           if (!blob) continue;
 
-          const dx = p.x - blob.x;
-          const dz = p.z - blob.z;
+          const dx = px - blob.x;
+          const dz = pz - blob.z;
           if (dx * dx + dz * dz >= pickupRSq) continue;
 
           if (blob.isSpeedBoost) {
@@ -240,10 +333,15 @@ export class GameRoom extends Room {
               Date.now() / 1000 + SPEED_BOOST_DURATION_SEC,
             );
           } else {
-            // Slower stat growth at high score (visual scale is score-driven; this stays in sync loosely).
-            const growthFactor = 1 / (1 + Math.log1p(p.score / 800));
-            p.size += blob.value * 0.014 * growthFactor;
-            p.score += blob.value;
+            const growthFactor = 1 / (1 + Math.log1p(massScore / 800));
+            const add = blob.value * 0.014 * growthFactor;
+            if (isPrimary) {
+              p.size += add;
+              p.score += blob.value;
+            } else {
+              p.splitSize += add;
+              p.splitScore += blob.value;
+            }
           }
           this.state.blobs.delete(key);
           this.spawnBlobs(1);
@@ -252,58 +350,121 @@ export class GameRoom extends Room {
     }
   }
 
-  getVisualScale(p: PlayerState): number {
+  getVisualScaleFromScore(score: number): number {
     const MIN_SCALE = 1;
     const MAX_SCALE = 10;
-    const t = Math.min(p.score / MAX_SCORE_FOR_SCALE, 1);
+    const t = Math.min(score / MAX_SCORE_FOR_SCALE, 1);
     return MIN_SCALE + t * (MAX_SCALE - MIN_SCALE);
   }
 
-  // Check for collisions between players
+  getVisualScale(p: PlayerState): number {
+    return this.getVisualScaleFromScore(p.score);
+  }
+
+  // Check for collisions between players (each mass cell independently).
   checkPlayerCollisions() {
     const players = Array.from(this.state.players.values()) as PlayerState[];
-    for (let i = 0; i < players.length; i++) {
+    outer: for (let i = 0; i < players.length; i++) {
       for (let j = i + 1; j < players.length; j++) {
         const a = players[i];
         const b = players[j];
         if (!a.isAlive || !b.isAlive) continue;
         if (a.isInvincible || b.isInvincible) continue;
 
-        const scaleA = this.getVisualScale(a);
-        const scaleB = this.getVisualScale(b);
-        const dist = Math.sqrt((a.x - b.x) ** 2 + (a.z - b.z) ** 2);
-
-        // Colisión basada en escala visual; el ganador depende de los puntos.
-        if (dist < (scaleA + scaleB) * 0.4) {
-          if (a.score > b.score) this.consumePlayer(a, b);
-          else if (b.score > a.score) this.consumePlayer(b, a);
+        const massesA = this.getMassCells(a);
+        const massesB = this.getMassCells(b);
+        for (const ma of massesA) {
+          for (const mb of massesB) {
+            const scaleA = this.getVisualScaleFromScore(ma.score);
+            const scaleB = this.getVisualScaleFromScore(mb.score);
+            const dist = Math.sqrt((ma.x - mb.x) ** 2 + (ma.z - mb.z) ** 2);
+            if (dist >= (scaleA + scaleB) * 0.4) continue;
+            if (ma.score > mb.score) {
+              this.absorbMass(a, ma.primary, b, mb.primary);
+              break outer;
+            }
+            if (mb.score > ma.score) {
+              this.absorbMass(b, mb.primary, a, ma.primary);
+              break outer;
+            }
+          }
         }
       }
     }
   }
 
-  // Handle one player consuming another
-  consumePlayer(winner: PlayerState, loser: PlayerState) {
-    winner.size += loser.size * 0.5;
-    winner.score += loser.score;
-    winner.kills += 1;
+  private getMassCells(p: PlayerState): {
+    primary: boolean;
+    x: number;
+    z: number;
+    score: number;
+  }[] {
+    if (!p.hasSplit) {
+      return [{ primary: true, x: p.x, z: p.z, score: p.score }];
+    }
+    return [
+      { primary: true, x: p.x, z: p.z, score: p.score },
+      {
+        primary: false,
+        x: p.splitX,
+        z: p.splitZ,
+        score: p.splitScore,
+      },
+    ];
+  }
+
+  private absorbMass(
+    winner: PlayerState,
+    winPrimary: boolean,
+    loser: PlayerState,
+    losePrimary: boolean,
+  ) {
+    const loseScore = losePrimary ? loser.score : loser.splitScore;
+    const loseSize = losePrimary ? loser.size : loser.splitSize;
+
+    if (winPrimary) winner.score += loseScore;
+    else winner.splitScore += loseScore;
+    winner.size += loseSize * 0.5;
+
+    if (!loser.hasSplit) {
+      winner.kills += 1;
+      this.killPlayerFully(loser, winner.name);
+      return;
+    }
+
+    if (losePrimary) {
+      loser.score = loser.splitScore;
+      loser.size = loser.splitSize;
+      loser.x = loser.splitX;
+      loser.z = loser.splitZ;
+      loser.hasSplit = false;
+      loser.splitScore = 0;
+      loser.splitSize = 0;
+    } else {
+      loser.hasSplit = false;
+      loser.splitScore = 0;
+      loser.splitSize = 0;
+    }
+  }
+
+  private killPlayerFully(loser: PlayerState, killerName: string) {
     const finalScore = loser.score;
     loser.isAlive = false;
     loser.size = 1;
     loser.score = 0;
+    loser.hasSplit = false;
+    loser.splitScore = 0;
+    loser.splitSize = 0;
     this._speedBoostUntil.delete(loser.id);
     this._speedSlowUntil.delete(loser.id);
     loser.speedBoostActive = false;
     loser.speedSlowActive = false;
 
-    // Notify the loser — client will handle respawn timing
     for (const c of this.clients) {
       if (c.sessionId === loser.id) {
-        c.send("died", { killedBy: winner.name, finalScore });
+        c.send("died", { killedBy: killerName, finalScore });
       }
     }
-
-    // No automatic respawn — client requests it via "requestRespawn"
   }
 
   // Spawn a number of blob pickups at random positions
