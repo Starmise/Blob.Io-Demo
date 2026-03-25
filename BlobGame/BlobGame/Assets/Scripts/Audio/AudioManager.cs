@@ -25,6 +25,7 @@ public class AudioManager : MonoBehaviour
     [SerializeField] AudioClip death;
     [SerializeField] AudioClip specialItem;
     [SerializeField] AudioClip uiClick;
+    [SerializeField] AudioClip splitterSpikeTouch;
 
     [Header("Levels")]
     [Range(0f, 1f)] [SerializeField] float musicVolume = 0.6f;
@@ -165,6 +166,7 @@ public class AudioManager : MonoBehaviour
     public void PlayDeath() => PlaySfx(death);
     public void PlaySpecialItem() => PlaySfx(specialItem);
     public void PlayUiClick() => PlaySfx(uiClick);
+    public void PlaySplitterSpikeTouch() => PlaySfx(splitterSpikeTouch);
 
     void OnDestroy()
     {

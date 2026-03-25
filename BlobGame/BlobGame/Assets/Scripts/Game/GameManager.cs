@@ -17,6 +17,15 @@ public class GameManager : MonoBehaviour
     public GameObject playerPrefab;
     public GameObject blobPickupPrefab;
 
+    [Header("Splitter spikes")]
+    [Tooltip("Optional. ~10 hazards that split into two smaller copies when a player touches them.")]
+    [SerializeField] GameObject splitterSpikePrefab;
+    [SerializeField] int splitterSpikeCount = 10;
+    [Tooltip("Half arena extent on X/Z (matches server MAP_SIZE).")]
+    [SerializeField] float splitterSpikeArenaHalfSize = 75f;
+    [SerializeField] float splitterSpikeScaleMin = 1.4f;
+    [SerializeField] float splitterSpikeScaleMax = 3.2f;
+
     [Header("Audio")]
     [Tooltip("Max horizontal distance from local player to blob pickup to play collect SFX (you collected it).")]
     [SerializeField] float pickupSoundRadius = 5f;
@@ -97,6 +106,26 @@ public class GameManager : MonoBehaviour
             AudioManager.Instance?.PlayDeath();
             UIManager.Instance.ShowDeathScreen(msg.killedBy, msg.finalScore);
         });
+
+        SpawnSplitterSpikes();
+    }
+
+    void SpawnSplitterSpikes()
+    {
+        if (splitterSpikePrefab == null) return;
+
+        float margin = 4f;
+        float half = Mathf.Max(5f, splitterSpikeArenaHalfSize - margin);
+        for (int i = 0; i < splitterSpikeCount; i++)
+        {
+            float x = Random.Range(-half, half);
+            float z = Random.Range(-half, half);
+            float s = Random.Range(splitterSpikeScaleMin, splitterSpikeScaleMax);
+            var go = Instantiate(splitterSpikePrefab, new Vector3(x, 0f, z), Quaternion.identity);
+            var spike = go.GetComponent<SplitterSpike>();
+            if (spike != null)
+                spike.InitializeForArena(new Vector3(s, s, s));
+        }
     }
 
     public bool TryGetPlayer(string sessionId, out PlayerController controller)

@@ -1089,8 +1089,9 @@ MonoBehaviour:
   death: {fileID: 8300000, guid: e443243e324b5e24bbbe2e097d53aadd, type: 3}
   specialItem: {fileID: 8300000, guid: e4548865cf3e1fa42945c8907b45b542, type: 3}
   uiClick: {fileID: 8300000, guid: 957983a8cb744fa4a8575e46c85dbc48, type: 3}
+  splitterSpikeTouch: {fileID: 8300000, guid: dcf0a71bb5cc26a47a0919c5a9da30d6, type: 3}
   musicVolume: 0.6
-  sfxVolume: 1
+  sfxVolume: 0.85
 --- !u!4 &645993822
 Transform:
   m_ObjectHideFlags: 0
@@ -3380,6 +3381,6 @@ SceneRoots:
   - {fileID: 1950386373}
   - {fileID: 1246604514}
   - {fileID: 573345443}
-  - {fileID: 645993822}
   - {fileID: 492113208}
+  - {fileID: 645993822}
   - {fileID: 4931122255915363493}

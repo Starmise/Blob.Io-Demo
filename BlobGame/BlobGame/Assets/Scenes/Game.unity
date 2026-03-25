@@ -16117,6 +16117,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerPrefab: {fileID: 7165120839334414313, guid: 50bbf3a852bdf2c41b2538cb89da22e6, type: 3}
   blobPickupPrefab: {fileID: 7353364474102458043, guid: b78f5aeb0727b35459bc5f7617a2d380, type: 3}
+  splitterSpikePrefab: {fileID: 4801666730302744425, guid: a314a8ec44c274a4bbe7a606bd6e9720, type: 3}
+  splitterSpikeCount: 10
+  splitterSpikeArenaHalfSize: 75
+  splitterSpikeScaleMin: 1.4
+  splitterSpikeScaleMax: 3.2
   pickupSoundRadius: 5
 --- !u!4 &2100978021
 Transform:

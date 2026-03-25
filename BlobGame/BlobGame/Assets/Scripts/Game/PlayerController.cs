@@ -67,6 +67,11 @@ public class PlayerController : MonoBehaviour
 
     void Awake()
     {
+        ResolveShadowReferenceIfNeeded();
+    }
+
+    void ResolveShadowReferenceIfNeeded()
+    {
         if (shadowTransform == null)
         {
             var t = transform.Find("shadow");
@@ -355,10 +360,12 @@ public class PlayerController : MonoBehaviour
         return Mathf.Lerp(MIN_SCALE, MAX_SCALE, t);
     }
 
-    /// <summary>Builds a minimal clone: mesh only + duplicated world Canvas (no camera, no controls). Server moves both masses.</summary>
+    /// <summary>Builds a minimal clone: mesh + shadow + duplicated world Canvas (no camera, no controls). Server moves both masses.</summary>
     void EnsureSplitCloneBuilt()
     {
         if (_splitCloneRoot != null || bodyRenderer == null) return;
+
+        ResolveShadowReferenceIfNeeded();
 
         _splitCloneRoot = new GameObject("SplitClone");
         _splitCloneRoot.transform.SetParent(transform.parent);
@@ -376,9 +383,14 @@ public class PlayerController : MonoBehaviour
         {
             var sh = Instantiate(shadowTransform.gameObject, _splitCloneRoot.transform);
             sh.name = "shadow";
+            sh.SetActive(true);
             _splitCloneShadowTransform = sh.transform;
             _splitCloneShadowBaseLocalScale = _splitCloneShadowTransform.localScale;
         }
+
+        meshGo.transform.SetSiblingIndex(bodyRenderer.transform.GetSiblingIndex());
+        if (_splitCloneShadowTransform != null && shadowTransform != null)
+            _splitCloneShadowTransform.SetSiblingIndex(shadowTransform.GetSiblingIndex());
 
         var srcCanvas = transform.Find("Canvas");
         if (srcCanvas != null)
@@ -454,6 +466,25 @@ public class PlayerController : MonoBehaviour
                 return f;
         }
         return Vector3.forward;
+    }
+
+    /// <summary>
+    /// SplitterSpike: same rules as manual split (E). <paramref name="launchDirWorldXZ"/> should be a world XZ direction (e.g. away from the spike).
+    /// </summary>
+    public bool TryRequestSplitFromSpike(Vector3 launchDirWorldXZ)
+    {
+        if (!_isLocal || _state == null || NetworkManager.Instance == null) return false;
+        if (_state.hasSplit) return false;
+        if (_state.score < 2) return false;
+
+        Vector3 d = new Vector3(launchDirWorldXZ.x, 0f, launchDirWorldXZ.z);
+        if (d.sqrMagnitude < 1e-6f)
+            d = GetSplitLaunchDirection();
+        else
+            d.Normalize();
+
+        NetworkManager.Instance.SendSplit(d.x, d.z);
+        return true;
     }
 
     /// <summary>

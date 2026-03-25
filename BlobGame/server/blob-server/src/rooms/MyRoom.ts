@@ -4,7 +4,7 @@ import { GameState, PlayerState, BlobPickup } from "./schema/MyRoomState.js";
 // Half-width of the arena in world units (players stay within [-MAP_SIZE, MAP_SIZE] on X/Z).
 // Must match the Unity Game scene: Plane scale (2*MAP_SIZE+2)/10 on X/Z, walls at ±(MAP_SIZE+1).
 const MAP_SIZE = 75;
-const BASE_SPEED = 0.9;
+const BASE_SPEED = 1;
 /** Target blob count (high — use spatial grid in update for O(n) pickup checks). */
 const BLOB_COUNT = 6000;
 /** World units per grid cell for blob proximity queries (≈ max pickup reach / 2). */
@@ -32,6 +32,8 @@ const MIN_SPEED_RATIO = 0.92;
 const SPLIT_SEPARATION = 1.65;
 /** Merge when distance < (rA + rB) * this. */
 const MERGE_DIST_FACTOR = 0.42;
+/** Over this many seconds the split copy eases toward the primary (smoothstep), making re-merge easier. */
+const SPLIT_PULL_DURATION_SEC = 10;
 
 /** Pickup tint options — edit to taste; must stay in sync with client expectations. */
 const BLOB_PICKUP_COLORS = [
@@ -55,6 +57,11 @@ export class GameRoom extends Room {
   declare state: GameState;
   private readonly _speedBoostUntil = new Map<string, number>();
   private readonly _speedSlowUntil = new Map<string, number>();
+  /** Split mass gradually pulls toward primary; world dir from primary→copy and initial separation are fixed at split. */
+  private readonly _splitPullStart = new Map<string, number>();
+  private readonly _splitInitSep = new Map<string, number>();
+  private readonly _splitDirX = new Map<string, number>();
+  private readonly _splitDirZ = new Map<string, number>();
 
   onCreate(options: any) {
     this.state = new GameState();
@@ -117,6 +124,7 @@ export class GameRoom extends Room {
       p.hasSplit = false;
       p.splitScore = 0;
       p.splitSize = 0;
+      this.clearSplitPullData(client.sessionId);
     });
   }
 
@@ -146,6 +154,7 @@ export class GameRoom extends Room {
     this.state.players.delete(client.sessionId);
     this._speedBoostUntil.delete(client.sessionId);
     this._speedSlowUntil.delete(client.sessionId);
+    this.clearSplitPullData(client.sessionId);
     console.log(`[LEAVE] ${client.sessionId}`);
   }
 
@@ -161,8 +170,7 @@ export class GameRoom extends Room {
       p.x = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.x)); // Keep player within bounds
       p.z = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.z)); // Keep player within bounds
       if (p.hasSplit) {
-        p.splitX = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.splitX));
-        p.splitZ = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.splitZ));
+        this.applySplitPull(p);
       }
       this.tryMergeSplitHalves(p);
       this.checkBlobPickups(p, blobGrid);
@@ -225,10 +233,7 @@ export class GameRoom extends Room {
     p.x = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.x));
     p.z = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.z));
     if (p.hasSplit) {
-      p.splitX += dx;
-      p.splitZ += dz;
-      p.splitX = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.splitX));
-      p.splitZ = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.splitZ));
+      this.applySplitPull(p);
     }
   }
 
@@ -265,6 +270,45 @@ export class GameRoom extends Room {
     p.splitX = cx + ox;
     p.splitZ = cz + oz;
     p.hasSplit = true;
+
+    const rdx = p.splitX - p.x;
+    const rdz = p.splitZ - p.z;
+    const d = Math.hypot(rdx, rdz);
+    if (d > 1e-9) {
+      this._splitDirX.set(sessionId, rdx / d);
+      this._splitDirZ.set(sessionId, rdz / d);
+    } else {
+      this._splitDirX.set(sessionId, 1);
+      this._splitDirZ.set(sessionId, 0);
+    }
+    this._splitInitSep.set(sessionId, d);
+    this._splitPullStart.set(sessionId, Date.now() / 1000);
+  }
+
+  /** Recompute split mass from primary + time-eased separation along the fixed launch axis. */
+  private applySplitPull(p: PlayerState) {
+    if (!p.hasSplit) return;
+    const id = p.id;
+    const t0 = this._splitPullStart.get(id);
+    if (t0 === undefined) return;
+    const elapsed = Date.now() / 1000 - t0;
+    const u = Math.min(1, elapsed / SPLIT_PULL_DURATION_SEC);
+    const smooth = u * u * (3 - 2 * u);
+    const initSep = this._splitInitSep.get(id) ?? 0;
+    const dirX = this._splitDirX.get(id) ?? 1;
+    const dirZ = this._splitDirZ.get(id) ?? 0;
+    const sep = initSep * (1 - smooth);
+    p.splitX = p.x + dirX * sep;
+    p.splitZ = p.z + dirZ * sep;
+    p.splitX = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.splitX));
+    p.splitZ = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, p.splitZ));
+  }
+
+  private clearSplitPullData(sessionId: string) {
+    this._splitPullStart.delete(sessionId);
+    this._splitInitSep.delete(sessionId);
+    this._splitDirX.delete(sessionId);
+    this._splitDirZ.delete(sessionId);
   }
 
   private tryMergeSplitHalves(p: PlayerState) {
@@ -280,6 +324,7 @@ export class GameRoom extends Room {
       p.hasSplit = false;
       p.splitScore = 0;
       p.splitSize = 0;
+      this.clearSplitPullData(p.id);
     }
   }
 
@@ -440,10 +485,12 @@ export class GameRoom extends Room {
       loser.hasSplit = false;
       loser.splitScore = 0;
       loser.splitSize = 0;
+      this.clearSplitPullData(loser.id);
     } else {
       loser.hasSplit = false;
       loser.splitScore = 0;
       loser.splitSize = 0;
+      this.clearSplitPullData(loser.id);
     }
   }
 
@@ -455,6 +502,7 @@ export class GameRoom extends Room {
     loser.hasSplit = false;
     loser.splitScore = 0;
     loser.splitSize = 0;
+    this.clearSplitPullData(loser.id);
     this._speedBoostUntil.delete(loser.id);
     this._speedSlowUntil.delete(loser.id);
     loser.speedBoostActive = false;
