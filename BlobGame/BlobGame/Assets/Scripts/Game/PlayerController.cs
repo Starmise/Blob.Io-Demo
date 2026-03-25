@@ -487,6 +487,17 @@ public class PlayerController : MonoBehaviour
         return true;
     }
 
+    /// <summary>Same as keyboard E — used by mobile Split button.</summary>
+    public bool TryManualSplit()
+    {
+        if (!_isLocal || _state == null || NetworkManager.Instance == null) return false;
+        if (_state.hasSplit) return false;
+        if (_state.score < 2) return false;
+        Vector3 launch = GetSplitLaunchDirection();
+        NetworkManager.Instance.SendSplit(launch.x, launch.z);
+        return true;
+    }
+
     /// <summary>
     /// Updates name and score labels using the latest state values.
     /// </summary>
@@ -573,6 +584,11 @@ public class PlayerController : MonoBehaviour
     {
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
+        if (MobileMoveInput.IsAxisActive)
+        {
+            h = MobileMoveInput.Axis.x;
+            v = MobileMoveInput.Axis.y;
+        }
 
         // Relative direction based on camera orientation
         var cam = Camera.main != null ? Camera.main.transform : transform;
