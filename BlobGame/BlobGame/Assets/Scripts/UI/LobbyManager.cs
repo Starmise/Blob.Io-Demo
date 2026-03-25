@@ -20,7 +20,6 @@ public class LobbyManager : MonoBehaviour
     public InputField nameInput;
 
     private bool _settingsOpen = false;
-    private bool _muted = false;
     private bool _starting = false;
 
     void Start()
@@ -32,9 +31,9 @@ public class LobbyManager : MonoBehaviour
 
         btnSettings.onClick.AddListener(ToggleSettings);
 
-        btnMusicMute.onClick.AddListener(ToggleMute);
-        btnMute.onClick.AddListener(ToggleMute);
-
+        // Sound_btn = master (music + SFX). Music_btn = music only.
+        btnMute.onClick.AddListener(ToggleAllSound);
+        btnMusicMute.onClick.AddListener(ToggleMusicOnly);
 
         StartCoroutine(BlinkPrompt());
     }
@@ -67,10 +66,16 @@ public class LobbyManager : MonoBehaviour
         settingsPanel.SetActive(_settingsOpen);
     }
 
-    void ToggleMute()
+    void ToggleAllSound()
     {
-        _muted = !_muted;
-        AudioListener.volume = _muted ? 0f : 1f;
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.ToggleSound();
+    }
+
+    void ToggleMusicOnly()
+    {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.ToggleMusic();
     }
 
     async void StartGame()

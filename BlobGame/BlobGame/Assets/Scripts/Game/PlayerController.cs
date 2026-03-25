@@ -44,6 +44,8 @@ public class PlayerController : MonoBehaviour
     public SkinDatabase skinDatabase;
 
     private string _currentSkinId = "";
+    private int _lastKills;
+    private int _lastTotalScore;
     private Vector3 _shadowBaseLocalScale = Vector3.one;
     /// <summary>Visual-only split mass (mesh + labels). Never duplicate the player root — it includes Camera and PlayerController.</summary>
     private GameObject _splitCloneRoot;
@@ -102,6 +104,9 @@ public class PlayerController : MonoBehaviour
         SetupSpeedLinesVfxInstance();
         SetupSpeedLinesRedVfxInstance();
 
+        _lastKills = state.kills;
+        _lastTotalScore = GetTotalDisplayedScore(state);
+
         /* I learned that in Colyseus 0.17, instead of using OnChange callbacks for state changes, we can just read
          the updated state directly in the Update method. The state object is automatically updated with the latest 
          values from the server, so we can just access _state.x, _state.y, etc. in Update and it will have the current values. 
@@ -116,6 +121,7 @@ public class PlayerController : MonoBehaviour
         if (_isLocal)
         {
             HandleInput();
+            DetectEatPlayerSfx();
             // CheckLocalDeath();
         }
 
@@ -132,6 +138,18 @@ public class PlayerController : MonoBehaviour
     {
         if (_splitCloneRoot != null)
             Destroy(_splitCloneRoot);
+    }
+
+    /// <summary>
+    /// Kills from eating a player increase score and kills; gift kills add kills without score.
+    /// </summary>
+    void DetectEatPlayerSfx()
+    {
+        int total = GetTotalDisplayedScore(_state);
+        if (_state.kills > _lastKills && total > _lastTotalScore)
+            AudioManager.Instance?.PlayEatPlayer();
+        _lastKills = _state.kills;
+        _lastTotalScore = total;
     }
 
     void LateUpdate()

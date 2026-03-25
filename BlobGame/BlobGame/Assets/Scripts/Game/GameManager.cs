@@ -17,6 +17,10 @@ public class GameManager : MonoBehaviour
     public GameObject playerPrefab;
     public GameObject blobPickupPrefab;
 
+    [Header("Audio")]
+    [Tooltip("Max horizontal distance from local player to blob pickup to play collect SFX (you collected it).")]
+    [SerializeField] float pickupSoundRadius = 5f;
+
     private Dictionary<string, PlayerController> _players = new();
     private Dictionary<string, BlobPickupView> _blobs = new();
 
@@ -55,20 +59,27 @@ public class GameManager : MonoBehaviour
         {
             if (_blobs.TryGetValue(id, out var view))
             {
-                // Only show floating score if local player is nearby (they collected it)
-                if (Camera.main != null)
-                {
-                    PlayerController localPlayer = null;
-                    foreach (var p in _players.Values)
-                        if (p._isLocal) { localPlayer = p; break; }
+                PlayerController localPlayer = null;
+                foreach (var p in _players.Values)
+                    if (p._isLocal) { localPlayer = p; break; }
 
-                    if (localPlayer != null)
-                    {
-                        // Get the canvas from the local player prefab
-                        var canvas = localPlayer.GetComponentInChildren<Canvas>();
-                        if (canvas != null)
-                            FloatingScore.Spawn(canvas, view.transform.position, (int)blob.value, Camera.main);
-                    }
+                bool nearLocal = localPlayer != null &&
+                    HorizontalDistance(localPlayer.transform.position, view.transform.position) <= pickupSoundRadius;
+
+                // Only show floating score if local player is nearby (they collected it)
+                if (Camera.main != null && nearLocal && localPlayer != null)
+                {
+                    var canvas = localPlayer.GetComponentInChildren<Canvas>();
+                    if (canvas != null)
+                        FloatingScore.Spawn(canvas, view.transform.position, (int)blob.value, Camera.main);
+                }
+
+                if (nearLocal && AudioManager.Instance != null)
+                {
+                    if (blob.isSpecial)
+                        AudioManager.Instance.PlaySpecialItem();
+                    else
+                        AudioManager.Instance.PlayPickupBlob();
                 }
 
                 if (view != null && view.gameObject != null)
@@ -83,6 +94,7 @@ public class GameManager : MonoBehaviour
         room.OnMessage<DiedMessage>("died", (msg) =>
         {
             Debug.Log($"[DEATH] Message received: killedBy={msg.killedBy}, score={msg.finalScore}");
+            AudioManager.Instance?.PlayDeath();
             UIManager.Instance.ShowDeathScreen(msg.killedBy, msg.finalScore);
         });
     }
@@ -119,6 +131,13 @@ public class GameManager : MonoBehaviour
         var view = go.GetComponent<BlobPickupView>();
         view.Init(blob);
         _blobs[id] = view;
+    }
+
+    static float HorizontalDistance(Vector3 a, Vector3 b)
+    {
+        float dx = a.x - b.x;
+        float dz = a.z - b.z;
+        return Mathf.Sqrt(dx * dx + dz * dz);
     }
 }
 
