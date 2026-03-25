@@ -1,6 +1,17 @@
 using Colyseus.Schema;
 
 /// <summary>
+/// One extra mass cell (primary stays on PlayerState x/z/score/size).
+/// </summary>
+public partial class SplitCell : Schema
+{
+    [Type(0, "float32")] public float x = default;
+    [Type(1, "float32")] public float z = default;
+    [Type(2, "int32")] public int score = default;
+    [Type(3, "float32")] public float size = default;
+}
+
+/// <summary>
 /// Player state schema that defines the properties of a player in the game. This is used by
 /// Colyseus to synchronize the player state between the server and clients. Each property has a type and an index, 
 /// which is used for efficient serialization.The GameState class contains a map of player states and blob pickups, 
@@ -23,11 +34,8 @@ public partial class PlayerState : Schema
     [Type(12, "string")] public string skinId = default;
     [Type(13, "boolean")] public bool speedBoostActive = default;
     [Type(14, "boolean")] public bool speedSlowActive = default;
-    [Type(15, "boolean")] public bool hasSplit = default;
-    [Type(16, "float32")] public float splitX = default;
-    [Type(17, "float32")] public float splitZ = default;
-    [Type(18, "int32")] public int splitScore = default;
-    [Type(19, "float32")] public float splitSize = default;
+    [Type(15, "array", typeof(ArraySchema<SplitCell>))]
+    public ArraySchema<SplitCell> splitCells = new ArraySchema<SplitCell>();
 }
 
 /// <summary>

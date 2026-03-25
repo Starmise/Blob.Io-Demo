@@ -1,7 +1,8 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Instantiates crown prefab(s) on the highest total-score player. When split, places a crown on both masses.
+/// Instantiates crown prefab(s) on the highest total-score player. When split, places a crown on each mass cell.
 /// Runs in LateUpdate so split clone roots exist after PlayerController builds them.
 /// </summary>
 public class LeaderCrownManager : MonoBehaviour
@@ -10,8 +11,9 @@ public class LeaderCrownManager : MonoBehaviour
     public GameObject crownPrefab;
 
     private GameObject _crownPrimary;
-    private GameObject _crownClone;
+    private readonly List<GameObject> _crownSplits = new List<GameObject>();
     private string _leaderId;
+    private int _lastSplitCount = -1;
 
     void LateUpdate()
     {
@@ -54,27 +56,33 @@ public class LeaderCrownManager : MonoBehaviour
             return;
         }
 
-        bool wantCloneCrown = bestState.hasSplit && controller.SplitCloneRoot != null;
-        bool haveCloneCrown = _crownClone != null;
+        int splitCount = bestState.splitCells != null ? bestState.splitCells.Count : 0;
 
-        if (bestId == _leaderId && _crownPrimary != null && wantCloneCrown == haveCloneCrown)
+        if (bestId == _leaderId &&
+            _crownPrimary != null &&
+            splitCount == _lastSplitCount &&
+            _crownSplits.Count == splitCount)
             return;
 
-        RebuildCrowns(controller, wantCloneCrown);
+        RebuildCrowns(controller, splitCount);
         _leaderId = bestId;
+        _lastSplitCount = splitCount;
     }
 
-    void RebuildCrowns(PlayerController controller, bool addCloneCrown)
+    void RebuildCrowns(PlayerController controller, int splitCount)
     {
         ClearCrowns();
 
         _crownPrimary = Instantiate(crownPrefab, controller.transform);
         _crownPrimary.transform.localPosition = Vector3.zero;
 
-        if (addCloneCrown && controller.SplitCloneRoot != null)
+        for (int i = 0; i < splitCount; i++)
         {
-            _crownClone = Instantiate(crownPrefab, controller.SplitCloneRoot);
-            _crownClone.transform.localPosition = Vector3.zero;
+            var root = controller.GetSplitCloneRoot(i);
+            if (root == null) continue;
+            var c = Instantiate(crownPrefab, root);
+            c.transform.localPosition = Vector3.zero;
+            _crownSplits.Add(c);
         }
     }
 
@@ -85,11 +93,13 @@ public class LeaderCrownManager : MonoBehaviour
             Destroy(_crownPrimary);
             _crownPrimary = null;
         }
-        if (_crownClone != null)
+        for (int i = 0; i < _crownSplits.Count; i++)
         {
-            Destroy(_crownClone);
-            _crownClone = null;
+            if (_crownSplits[i] != null)
+                Destroy(_crownSplits[i]);
         }
+        _crownSplits.Clear();
         _leaderId = null;
+        _lastSplitCount = -1;
     }
 }
