@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System;
 
 /// <summary>
 /// Central audio singleton: background music and one-shot SFX. Lives in Lobby (DontDestroyOnLoad) and applies
@@ -10,6 +11,7 @@ using UnityEngine.SceneManagement;
 public class AudioManager : MonoBehaviour
 {
     public static AudioManager Instance { get; private set; }
+    public event Action AudioStateChanged;
 
     const string PrefsSound = "Audio_SoundEnabled";
     const string PrefsMusic = "Audio_MusicEnabled";
@@ -155,6 +157,8 @@ public class AudioManager : MonoBehaviour
         {
             musicSource.Stop();
         }
+
+        AudioStateChanged?.Invoke();
     }
 
     void PlaySfx(AudioClip clip)

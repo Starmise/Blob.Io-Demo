@@ -63,6 +63,8 @@ public class SplitterSpike : MonoBehaviour
             return;
 
         AudioManager.Instance?.PlaySplitterSpikeTouch();
+        if (GameManager.Instance != null)
+            GameManager.Instance.NotifySplitterSpikeDestroyed(this);
         Destroy(gameObject);
     }
 

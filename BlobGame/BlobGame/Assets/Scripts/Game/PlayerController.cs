@@ -22,7 +22,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float invincibilityShieldScaleFactor = 1.3f;
     [Header("Shadow")]
     [Tooltip("Child that follows blob size on X/Z; leave empty to auto-find \"shadow\".")]
-    [SerializeField] Transform shadowTransform;
+    [SerializeField] public Transform shadowTransform;
     [Tooltip("World X/Z size = blob horizontal radius scale (ignores Y breathing).")]
     [SerializeField] float shadowWorldXZMultiplier = 1f;
     [Tooltip("World Y size = blob horizontal scale (set small for a flat decal).")]
@@ -112,6 +112,18 @@ public class PlayerController : MonoBehaviour
     void Awake()
     {
         ResolveShadowReferenceIfNeeded();
+    }
+
+    void Start()
+    {
+        // Lobby preview responsibility is delegated to PlayerLobby.
+        if (NetworkManager.Instance != null && !NetworkManager.Instance.IsInGame)
+        {
+            var lobby = GetComponent<PlayerLobby>();
+            if (lobby == null)
+                lobby = gameObject.AddComponent<PlayerLobby>();
+            lobby.SetupLobbyPreview();
+        }
     }
 
     void ResolveShadowReferenceIfNeeded()

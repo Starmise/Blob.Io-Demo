@@ -35,6 +35,19 @@ public class LobbyManager : MonoBehaviour
         btnMute.onClick.AddListener(ToggleAllSound);
         btnMusicMute.onClick.AddListener(ToggleMusicOnly);
 
+        // Precompute lobby preview values so the lobby player can show them.
+        // This must match what StartGame() will use.
+        if (NetworkManager.Instance != null)
+        {
+            string enteredName = nameInput != null ? nameInput.text.Trim() : "";
+            if (string.IsNullOrEmpty(enteredName))
+                NetworkManager.Instance.LocalPlayerName = $"blob{Random.Range(100, 9999)}";
+            else
+                NetworkManager.Instance.LocalPlayerName = enteredName;
+
+            NetworkManager.Instance.LocalSkinId = PlayerPrefs.GetString("SelectedSkin", "default");
+        }
+
         StartCoroutine(BlinkPrompt());
     }
 
@@ -83,15 +96,14 @@ public class LobbyManager : MonoBehaviour
         _starting = true;
         txtStartPrompt.text = "Connecting...";
 
-        // Asign random name automatically if it wasn't sellected manually
-        int randomId = Random.Range(100, 9999);
+        // Assign name only if the user entered one; otherwise keep the precomputed lobby value.
         string enteredName = nameInput != null ? nameInput.text.Trim() : "";
-        NetworkManager.Instance.LocalPlayerName =
-            string.IsNullOrEmpty(enteredName) ? $"blob{Random.Range(100, 9999)}" : enteredName;
+        if (!string.IsNullOrEmpty(enteredName))
+            NetworkManager.Instance.LocalPlayerName = enteredName;
 
         // Load saved skin, fallback to default
-        string savedSkin = PlayerPrefs.GetString("SelectedSkin", "default");
-        NetworkManager.Instance.LocalSkinId = savedSkin;
+        NetworkManager.Instance.LocalSkinId =
+            PlayerPrefs.GetString("SelectedSkin", "default");
 
         await NetworkManager.Instance.JoinGame();
     }
