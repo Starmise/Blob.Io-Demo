@@ -744,7 +744,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   btnSound: {fileID: 1671325413}
   btnMusic: {fileID: 347268465}
-  bindClickHandlers: 1
+  bindClickHandlers: 0
   onAlpha: 1
   offAlpha: 0.4
 --- !u!1 &573345441
@@ -776,7 +776,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 24eba30939e6fcb48b01196bcdaf2ea6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  serverAddress: ws://localhost:2567
+  serverAddress: wss://blob-io-demo.onrender.com
   LocalPlayerName: Player
   LocalPlayerColor: '#4488FF'
   LocalSkinId: default

@@ -15,7 +15,7 @@ public class AudioTogglesUI : MonoBehaviour
 
     [Header("Behavior")]
     [Tooltip("If true, this component wires button clicks to AudioManager toggles.")]
-    public bool bindClickHandlers = true;
+    public bool bindClickHandlers = false;
 
     [Header("Visual state")]
     [Range(0f, 1f)] public float onAlpha = 1f;
