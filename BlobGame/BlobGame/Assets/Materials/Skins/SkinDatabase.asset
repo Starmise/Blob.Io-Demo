@@ -41,11 +41,11 @@ MonoBehaviour:
     material: {fileID: 2100000, guid: fcd5666f3cbb92d468971f06703f9a3d, type: 2}
     previewSprite: {fileID: 21300000, guid: 96ef5e1487be62e45a1e736b5b264098, type: 3}
     killCost: 1
-  - skinId: Orange Pattern
-    material: {fileID: 2100000, guid: 9da20ef5ad8b1fd49b2698b1bea3ef6b, type: 2}
-    previewSprite: {fileID: 21300000, guid: 091fab52a8b5dfa4f9fcc981f584ab35, type: 3}
-    killCost: 2
   - skinId: Retro Pattern
     material: {fileID: 2100000, guid: 449ace25942387a409f35bdc504d2cb9, type: 2}
     previewSprite: {fileID: 21300000, guid: c671a1356127077459b2eb45b25a10ef, type: 3}
     killCost: 2
+  - skinId: Test face
+    material: {fileID: 2100000, guid: 5f696c7dfb1c4564d8c790bedbeff497, type: 2}
+    previewSprite: {fileID: 21300000, guid: 86cb5c1cd4a3b3445ad2ebe5fcd6e8c8, type: 3}
+    killCost: 0

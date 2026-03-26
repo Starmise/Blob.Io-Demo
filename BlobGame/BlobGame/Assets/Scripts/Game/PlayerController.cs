@@ -51,6 +51,9 @@ public class PlayerController : MonoBehaviour
     private int _lastKills;
     private int _lastTotalScore;
     private Vector3 _shadowBaseLocalScale = Vector3.one;
+    private static readonly int FaceDirOSId = Shader.PropertyToID("_FaceDirOS");
+    private MaterialPropertyBlock _bodyFaceMpb;
+    private readonly List<MaterialPropertyBlock> _splitFaceMpbs = new List<MaterialPropertyBlock>();
     /// <summary>Visual-only extra masses (mesh + labels). Never duplicate the player root — it includes Camera and PlayerController.</summary>
     private readonly List<GameObject> _splitCloneRoots = new List<GameObject>();
     private readonly List<MeshRenderer> _splitCloneMeshRenderers = new List<MeshRenderer>();
@@ -175,6 +178,7 @@ public class PlayerController : MonoBehaviour
         UpdateSplitCloneVisual();
         UpdateRemoteFacingFromState();
         UpdateVisualState();
+        UpdateFaceOverlayDirection();
         UpdateLabels();
         BillboardLabels();
     }
@@ -197,6 +201,7 @@ public class PlayerController : MonoBehaviour
         _cloneScoreLabels.Clear();
         _splitCloneShadowTransforms.Clear();
         _splitCloneShadowBaseLocalScales.Clear();
+        _splitFaceMpbs.Clear();
     }
 
     /// <summary>
@@ -443,6 +448,7 @@ public class PlayerController : MonoBehaviour
         var mf = meshGo.AddComponent<MeshFilter>();
         var mr = meshGo.AddComponent<MeshRenderer>();
         _splitCloneMeshRenderers.Add(mr);
+        _splitFaceMpbs.Add(new MaterialPropertyBlock());
         var srcMf = bodyRenderer.GetComponent<MeshFilter>();
         if (srcMf != null)
             mf.sharedMesh = srcMf.sharedMesh;
@@ -509,6 +515,7 @@ public class PlayerController : MonoBehaviour
             _cloneScoreLabels.RemoveAt(last);
             _splitCloneShadowTransforms.RemoveAt(last);
             _splitCloneShadowBaseLocalScales.RemoveAt(last);
+            _splitFaceMpbs.RemoveAt(last);
         }
         while (_splitCloneRoots.Count < requiredCount)
             BuildOneSplitClone();
@@ -684,6 +691,58 @@ public class PlayerController : MonoBehaviour
             if (_splitCloneRoots[i] != null)
                 _splitCloneRoots[i].SetActive(showSplits);
         }
+    }
+
+    void UpdateFaceOverlayDirection()
+    {
+        Vector3 faceDirWS = GetFacingDirXZ();
+        if (faceDirWS.sqrMagnitude <= 1e-6f)
+            faceDirWS = Vector3.forward;
+
+        ApplyFaceDirToRenderer(bodyRenderer, transform, faceDirWS, ref _bodyFaceMpb);
+
+        int n = Mathf.Min(_splitCloneMeshRenderers.Count, _splitCloneRoots.Count);
+        for (int i = 0; i < n; i++)
+        {
+            var mr = _splitCloneMeshRenderers[i];
+            var root = _splitCloneRoots[i];
+            if (mr == null || root == null) continue;
+
+            var block = _splitFaceMpbs[i];
+            if (block == null)
+            {
+                block = new MaterialPropertyBlock();
+                _splitFaceMpbs[i] = block;
+            }
+
+            Vector3 dirWS = faceDirWS;
+            dirWS.y = 0f;
+            if (dirWS.sqrMagnitude <= 1e-6f) dirWS = Vector3.forward;
+            else dirWS.Normalize();
+
+            mr.GetPropertyBlock(block);
+            block.SetVector(FaceDirOSId, new Vector4(dirWS.x, 0f, dirWS.z, 0f));
+            mr.SetPropertyBlock(block);
+        }
+    }
+
+    void ApplyFaceDirToRenderer(
+        MeshRenderer renderer,
+        Transform owner,
+        Vector3 faceDirWS,
+        ref MaterialPropertyBlock block)
+    {
+        if (renderer == null || owner == null) return;
+        if (block == null) block = new MaterialPropertyBlock();
+
+        Vector3 dirWS = faceDirWS;
+        dirWS.y = 0f;
+        if (dirWS.sqrMagnitude <= 1e-6f) dirWS = Vector3.forward;
+        else dirWS.Normalize();
+
+        renderer.GetPropertyBlock(block);
+        block.SetVector(FaceDirOSId, new Vector4(dirWS.x, 0f, dirWS.z, 0f));
+        renderer.SetPropertyBlock(block);
     }
 
     /// <summary>

@@ -16,9 +16,9 @@ const BLOB_COUNT = 6000;
 const BLOB_CELL_SIZE = 8;
 const INVINCIBLE_SEC = 10;
 const BLOB_VALUES = [1, 2, 5, 10];
-const SPECIAL_BLOB_CHANCE = 0.005;
+const SPECIAL_BLOB_CHANCE = 0.002;
 const SPEED_BLOB_CHANCE = 0.01;
-const SLOW_BLOB_CHANCE = 0.01;
+const SLOW_BLOB_CHANCE = 0.005;
 const SPEED_BOOST_MULTIPLIER = 1.35;
 /** Mirrors boost strength: move speed × this while slow debuff is active. */
 const SPEED_SLOW_MULTIPLIER = 1 / SPEED_BOOST_MULTIPLIER;
@@ -29,9 +29,9 @@ const MAX_SCORE_FOR_SCALE = 200000;
 
 // Movement: io-style — barely slower when huge.
 const SPEED_SCORE_REF = MAX_SCORE_FOR_SCALE;
-const SPEED_LOG_WEIGHT = 0.055;
+const SPEED_LOG_WEIGHT = 0.04;
 // Safety floor for absurd scores; normal play stays above this via the soft curve.
-const MIN_SPEED_RATIO = 0.92;
+const MIN_SPEED_RATIO = 0.95;
 
 /** Center-to-center distance between split halves (smaller = easier to merge back). */
 const SPLIT_SEPARATION = 1.65;
