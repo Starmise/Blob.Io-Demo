@@ -38,7 +38,7 @@ const SPLIT_SEPARATION = 1.65;
 /** Merge when distance < (rA + rB) * this. */
 const MERGE_DIST_FACTOR = 0.42;
 /** Over this many seconds each extra mass eases toward the primary (smoothstep). */
-const SPLIT_PULL_DURATION_SEC = 10;
+const SPLIT_PULL_DURATION_SEC = 14;
 
 /** Max extra masses (primary + 4 = 5 cells total). */
 const MAX_SPLIT_EXTRAS = 4;

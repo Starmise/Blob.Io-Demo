@@ -432,6 +432,10 @@ public class PlayerController : MonoBehaviour
 
         var root = new GameObject("SplitClone");
         root.transform.SetParent(transform.parent);
+        // Spawn from the current blob pose so the clone appears to split out of it,
+        // instead of lerping in from world origin.
+        root.transform.position = transform.position;
+        root.transform.localScale = transform.localScale;
         _splitCloneRoots.Add(root);
 
         var meshGo = new GameObject("BlobMesh");
