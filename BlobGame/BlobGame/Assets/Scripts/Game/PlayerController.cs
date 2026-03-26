@@ -50,6 +50,7 @@ public class PlayerController : MonoBehaviour
     private string _currentSkinId = "";
     private int _lastKills;
     private int _lastTotalScore;
+    private int _lastSplitCellCountForSfx;
     private Vector3 _shadowBaseLocalScale = Vector3.one;
     private static readonly int FaceDirOSId = Shader.PropertyToID("_FaceDirOS");
     private MaterialPropertyBlock _bodyFaceMpb;
@@ -154,6 +155,7 @@ public class PlayerController : MonoBehaviour
 
         _lastKills = state.kills;
         _lastTotalScore = GetTotalDisplayedScore(state);
+        _lastSplitCellCountForSfx = state.splitCells != null ? state.splitCells.Count : 0;
 
         /* I learned that in Colyseus 0.17, instead of using OnChange callbacks for state changes, we can just read
          the updated state directly in the Update method. The state object is automatically updated with the latest 
@@ -170,6 +172,7 @@ public class PlayerController : MonoBehaviour
         {
             HandleInput();
             DetectEatPlayerSfx();
+            DetectSplitMergeSfx();
             // CheckLocalDeath();
         }
 
@@ -214,6 +217,17 @@ public class PlayerController : MonoBehaviour
             AudioManager.Instance?.PlayEatPlayer();
         _lastKills = _state.kills;
         _lastTotalScore = total;
+    }
+
+    void DetectSplitMergeSfx()
+    {
+        if (_state == null) return;
+        int currentCount = _state.splitCells != null ? _state.splitCells.Count : 0;
+        if (currentCount > _lastSplitCellCountForSfx)
+            AudioManager.Instance?.PlaySplit();
+        else if (currentCount < _lastSplitCellCountForSfx)
+            AudioManager.Instance?.PlayMerge();
+        _lastSplitCellCountForSfx = currentCount;
     }
 
     void LateUpdate()
@@ -660,13 +674,16 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     void UpdateVisualState()
     {
+        SkinDatabase.SkinEntry skinEntry = null;
+
         // Update skin material using skinId when itchanges
         if (!string.IsNullOrEmpty(_state.skinId) && _state.skinId != _currentSkinId)
         {
             _currentSkinId = _state.skinId;
             if (skinDatabase != null)
             {
-                var mat = skinDatabase.GetMaterial(_currentSkinId);
+                skinEntry = skinDatabase.GetSkin(_currentSkinId);
+                var mat = skinEntry != null ? skinEntry.material : null;
                 if (mat != null)
                 {
                     bodyRenderer.material = mat;
@@ -677,6 +694,10 @@ public class PlayerController : MonoBehaviour
                     }
                 }
             }
+        }
+        else if (skinDatabase != null && !string.IsNullOrEmpty(_currentSkinId))
+        {
+            skinEntry = skinDatabase.GetSkin(_currentSkinId);
         }
 
         if (invincibilityEffect != null)
@@ -720,7 +741,7 @@ public class PlayerController : MonoBehaviour
             if (dirWS.sqrMagnitude <= 1e-6f) dirWS = Vector3.forward;
             else dirWS.Normalize();
 
-            mr.GetPropertyBlock(block);
+            block.Clear();
             block.SetVector(FaceDirOSId, new Vector4(dirWS.x, 0f, dirWS.z, 0f));
             mr.SetPropertyBlock(block);
         }
@@ -740,7 +761,7 @@ public class PlayerController : MonoBehaviour
         if (dirWS.sqrMagnitude <= 1e-6f) dirWS = Vector3.forward;
         else dirWS.Normalize();
 
-        renderer.GetPropertyBlock(block);
+        block.Clear();
         block.SetVector(FaceDirOSId, new Vector4(dirWS.x, 0f, dirWS.z, 0f));
         renderer.SetPropertyBlock(block);
     }

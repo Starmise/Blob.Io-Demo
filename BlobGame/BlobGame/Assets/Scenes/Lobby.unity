@@ -1090,8 +1090,10 @@ MonoBehaviour:
   specialItem: {fileID: 8300000, guid: e4548865cf3e1fa42945c8907b45b542, type: 3}
   uiClick: {fileID: 8300000, guid: 957983a8cb744fa4a8575e46c85dbc48, type: 3}
   splitterSpikeTouch: {fileID: 8300000, guid: dcf0a71bb5cc26a47a0919c5a9da30d6, type: 3}
-  musicVolume: 0.6
-  sfxVolume: 0.85
+  split: {fileID: 8300000, guid: dee526e323b35ad42b778e12c4270022, type: 3}
+  merge: {fileID: 8300000, guid: d1664c530e75b9b4fb1ad1a770818564, type: 3}
+  musicVolume: 0.3
+  sfxVolume: 0.6
 --- !u!4 &645993822
 Transform:
   m_ObjectHideFlags: 0

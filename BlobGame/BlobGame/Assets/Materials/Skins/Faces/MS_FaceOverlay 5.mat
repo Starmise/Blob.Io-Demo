@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: MS_FaceOverlay
+  m_Name: MS_FaceOverlay 5
   m_Shader: {fileID: 4800000, guid: cf8e96e1c3065f44b811602ce3c51143, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -24,7 +24,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _FaceTex:
-        m_Texture: {fileID: 2800000, guid: 86cb5c1cd4a3b3445ad2ebe5fcd6e8c8, type: 3}
+        m_Texture: {fileID: 2800000, guid: 1f8e765110ab6444392759f2c0058d6a, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []

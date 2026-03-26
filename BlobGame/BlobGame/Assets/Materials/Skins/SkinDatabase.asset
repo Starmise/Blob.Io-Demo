@@ -17,35 +17,113 @@ MonoBehaviour:
     material: {fileID: 2100000, guid: fb20823f150788d4aa402da79fa85540, type: 2}
     previewSprite: {fileID: 21300000, guid: 5381cec7502fa8e49aa8a86c397cdb9c, type: 3}
     killCost: 0
+    category: 0
+    faceSprite: {fileID: 0}
   - skinId: Broccoli
     material: {fileID: 2100000, guid: 6cea5e4a9d37adc4fac0bd9208548b96, type: 2}
     previewSprite: {fileID: 21300000, guid: b4eafff2517374f4cab3ffec990544f8, type: 3}
     killCost: 0
+    category: 0
+    faceSprite: {fileID: 0}
   - skinId: Cats
     material: {fileID: 2100000, guid: 038e8f6ea94a5474289e456661b5348a, type: 2}
     previewSprite: {fileID: 21300000, guid: 03cf578b02cff7345b86df89ae9a3326, type: 3}
     killCost: 1
+    category: 0
+    faceSprite: {fileID: 0}
   - skinId: Confetti
     material: {fileID: 2100000, guid: 5d18bc4d995248d4cac70da7814cabda, type: 2}
     previewSprite: {fileID: 21300000, guid: 743388c82615a3944b911e95652b1a3a, type: 3}
     killCost: 1
+    category: 0
+    faceSprite: {fileID: 0}
   - skinId: Cow
     material: {fileID: 2100000, guid: 787a81f9b1ebc054594eb4f94f29e3ab, type: 2}
     previewSprite: {fileID: 21300000, guid: 8ae5cb07b1a8d1049ae4cd7dfa6f0243, type: 3}
     killCost: 1
+    category: 0
+    faceSprite: {fileID: 0}
   - skinId: Flowers
     material: {fileID: 2100000, guid: 4585cc45bc4bab44fbea59b5acaa46e9, type: 2}
     previewSprite: {fileID: 21300000, guid: 88fa0b4306c8ca245b26409094ecb832, type: 3}
     killCost: 1
+    category: 0
+    faceSprite: {fileID: 0}
   - skinId: Leaves
     material: {fileID: 2100000, guid: fcd5666f3cbb92d468971f06703f9a3d, type: 2}
     previewSprite: {fileID: 21300000, guid: 96ef5e1487be62e45a1e736b5b264098, type: 3}
     killCost: 1
+    category: 0
+    faceSprite: {fileID: 0}
   - skinId: Retro Pattern
     material: {fileID: 2100000, guid: 449ace25942387a409f35bdc504d2cb9, type: 2}
     previewSprite: {fileID: 21300000, guid: c671a1356127077459b2eb45b25a10ef, type: 3}
     killCost: 2
-  - skinId: Test face
+    category: 0
+    faceSprite: {fileID: 0}
+  - skinId: Orange Pattern
+    material: {fileID: 2100000, guid: 9da20ef5ad8b1fd49b2698b1bea3ef6b, type: 2}
+    previewSprite: {fileID: 21300000, guid: 091fab52a8b5dfa4f9fcc981f584ab35, type: 3}
+    killCost: 2
+    category: 0
+    faceSprite: {fileID: 0}
+  - skinId: Face 1
     material: {fileID: 2100000, guid: 5f696c7dfb1c4564d8c790bedbeff497, type: 2}
     previewSprite: {fileID: 21300000, guid: 86cb5c1cd4a3b3445ad2ebe5fcd6e8c8, type: 3}
     killCost: 0
+    category: 1
+    faceSprite: {fileID: 21300000, guid: 86cb5c1cd4a3b3445ad2ebe5fcd6e8c8, type: 3}
+  - skinId: Face 2
+    material: {fileID: 2100000, guid: 80533230bda3d634a85f7f714ec07784, type: 2}
+    previewSprite: {fileID: 21300000, guid: a9ced8fb0ba3bd44494331e1311f4ebd, type: 3}
+    killCost: 0
+    category: 1
+    faceSprite: {fileID: 21300000, guid: 86cb5c1cd4a3b3445ad2ebe5fcd6e8c8, type: 3}
+  - skinId: Face 3
+    material: {fileID: 2100000, guid: 99188eba9242dcd4795c0e5a7ff2984e, type: 2}
+    previewSprite: {fileID: 21300000, guid: 9d6ef8017e834924398339c9764a890e, type: 3}
+    killCost: 1
+    category: 1
+    faceSprite: {fileID: 21300000, guid: 86cb5c1cd4a3b3445ad2ebe5fcd6e8c8, type: 3}
+  - skinId: Face 4
+    material: {fileID: 2100000, guid: ee55c491c40c07a49b8f8c1af7206717, type: 2}
+    previewSprite: {fileID: 21300000, guid: e394e400b4313c04f8f24694c2065ff3, type: 3}
+    killCost: 1
+    category: 1
+    faceSprite: {fileID: 21300000, guid: 86cb5c1cd4a3b3445ad2ebe5fcd6e8c8, type: 3}
+  - skinId: Face 5
+    material: {fileID: 2100000, guid: d1de98ade85cfe24497f32a2a77368ec, type: 2}
+    previewSprite: {fileID: 21300000, guid: 1f8e765110ab6444392759f2c0058d6a, type: 3}
+    killCost: 1
+    category: 1
+    faceSprite: {fileID: 21300000, guid: 86cb5c1cd4a3b3445ad2ebe5fcd6e8c8, type: 3}
+  - skinId: Face 6
+    material: {fileID: 2100000, guid: 2a55ce8803b299b459ef6855fbca0e4f, type: 2}
+    previewSprite: {fileID: 21300000, guid: 33a98ed1634223f45aad180f1c16eff1, type: 3}
+    killCost: 0
+    category: 1
+    faceSprite: {fileID: 21300000, guid: 86cb5c1cd4a3b3445ad2ebe5fcd6e8c8, type: 3}
+  - skinId: Face 7
+    material: {fileID: 2100000, guid: d125a82f29dc3784fb1f91822c56931b, type: 2}
+    previewSprite: {fileID: 21300000, guid: af9c2cf87f50cc84ba4fb0a160c6c42e, type: 3}
+    killCost: 2
+    category: 1
+    faceSprite: {fileID: 21300000, guid: 86cb5c1cd4a3b3445ad2ebe5fcd6e8c8, type: 3}
+  - skinId: Face 8
+    material: {fileID: 2100000, guid: cc91be7debba1a14f82834a9851835e1, type: 2}
+    previewSprite: {fileID: 21300000, guid: 64454fa6284ab5a4a948a4cf987fec2a, type: 3}
+    killCost: 2
+    category: 1
+    faceSprite: {fileID: 21300000, guid: 86cb5c1cd4a3b3445ad2ebe5fcd6e8c8, type: 3}
+  - skinId: Face 9
+    material: {fileID: 2100000, guid: 104bfca53fdf83a4faf3cc154ccf5715, type: 2}
+    previewSprite: {fileID: 21300000, guid: d58380be1aba3f44195ef47b54a7613a, type: 3}
+    killCost: 2
+    category: 1
+    faceSprite: {fileID: 21300000, guid: 86cb5c1cd4a3b3445ad2ebe5fcd6e8c8, type: 3}
+  - skinId: Face 10
+    material: {fileID: 2100000, guid: edcc3b001d6c7ce46a8dce956976090f, type: 2}
+    previewSprite: {fileID: 21300000, guid: 8395e1bcf6d92f447bf3a08f12eaae80, type: 3}
+    killCost: 0
+    category: 1
+    faceSprite: {fileID: 21300000, guid: 86cb5c1cd4a3b3445ad2ebe5fcd6e8c8, type: 3}

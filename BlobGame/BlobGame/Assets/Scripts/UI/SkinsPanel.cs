@@ -9,16 +9,45 @@ public class SkinsPanel : MonoBehaviour
     public GameObject skinItemPrefab;
     public Transform container;
     public Text txtFeedback;
+    [Header("Category buttons")]
+    public Button btnSeamlessSkins;
+    public Button btnFaceSkins;
 
     private List<SkinDatabase.SkinEntry> _skins = new();
+    private SkinDatabase.SkinCategory _activeCategory = SkinDatabase.SkinCategory.Seamless;
+    private const string PurchasedSkinPrefPrefix = "PurchasedSkin_";
 
     void Start()
     {
         if (skinDatabase == null || skinItemPrefab == null || container == null)
             return;
 
+        if (btnSeamlessSkins != null)
+            btnSeamlessSkins.onClick.AddListener(() => SetCategory(SkinDatabase.SkinCategory.Seamless));
+        if (btnFaceSkins != null)
+            btnFaceSkins.onClick.AddListener(() => SetCategory(SkinDatabase.SkinCategory.Face));
+
+        RebuildList();
+    }
+
+    void SetCategory(SkinDatabase.SkinCategory category)
+    {
+        _activeCategory = category;
+        RebuildList();
+    }
+
+    void RebuildList()
+    {
+        for (int i = container.childCount - 1; i >= 0; i--)
+            Destroy(container.GetChild(i).gameObject);
+
+        _skins.Clear();
         foreach (var skin in skinDatabase.skins)
         {
+            if (skin.category != _activeCategory)
+                continue;
+            _skins.Add(skin);
+
             var go = Instantiate(skinItemPrefab, container);
 
             string skinId = skin.skinId;
@@ -33,7 +62,7 @@ public class SkinsPanel : MonoBehaviour
                 img.sprite = skin.previewSprite;
 
             if (costTxt != null)
-                costTxt.text = $"0{cost}";
+                costTxt.text = IsSkinPurchased(skinId) ? "-" : $"0{cost}";
 
             if (nameTxt != null)
                 nameTxt.text = skinId;
@@ -63,6 +92,7 @@ public class SkinsPanel : MonoBehaviour
             return;
         }
 
+        MarkSkinPurchased(skinId);
         PlayerPrefs.SetString("SelectedSkin", skinId);
         PlayerPrefs.Save();
 
@@ -74,5 +104,19 @@ public class SkinsPanel : MonoBehaviour
 
         if (txtFeedback != null)
             txtFeedback.text = "Skin equipped!";
+
+        RebuildList();
+    }
+
+    bool IsSkinPurchased(string skinId)
+    {
+        if (string.IsNullOrEmpty(skinId)) return false;
+        return PlayerPrefs.GetInt(PurchasedSkinPrefPrefix + skinId, 0) == 1;
+    }
+
+    void MarkSkinPurchased(string skinId)
+    {
+        if (string.IsNullOrEmpty(skinId)) return;
+        PlayerPrefs.SetInt(PurchasedSkinPrefPrefix + skinId, 1);
     }
 }

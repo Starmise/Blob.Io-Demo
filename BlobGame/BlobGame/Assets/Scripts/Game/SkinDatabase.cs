@@ -4,6 +4,12 @@ using System.Collections.Generic;
 [CreateAssetMenu(fileName = "SkinDatabase", menuName = "BlobGame/SkinDatabase")]
 public class SkinDatabase : ScriptableObject
 {
+    public enum SkinCategory
+    {
+        Seamless = 0,
+        Face = 1
+    }
+
     [System.Serializable]
     public class SkinEntry
     {
@@ -11,6 +17,9 @@ public class SkinDatabase : ScriptableObject
         public Material material;
         public Sprite previewSprite; // Variable for teh UI preview
         public int killCost;
+        public SkinCategory category = SkinCategory.Seamless;
+        [Tooltip("Used by face skins: sprite texture assigned to _FaceTex on the material.")]
+        [HideInInspector] public Sprite faceSprite;
     }
 
     public SkinEntry[] skins;
