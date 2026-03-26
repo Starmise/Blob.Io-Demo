@@ -17,8 +17,22 @@ public class GameManager : MonoBehaviour
     public GameObject playerPrefab;
     public GameObject blobPickupPrefab;
 
+    [Header("Splitter spikes")]
+    [Tooltip("Optional. ~10 hazards that split into two smaller copies when a player touches them.")]
+    [SerializeField] GameObject splitterSpikePrefab;
+    [SerializeField] int splitterSpikeCount = 10;
+    [Tooltip("Half arena extent on X/Z (matches server MAP_SIZE).")]
+    [SerializeField] float splitterSpikeArenaHalfSize = 75f;
+    [SerializeField] float splitterSpikeScaleMin = 1.4f;
+    [SerializeField] float splitterSpikeScaleMax = 3.2f;
+
+    [Header("Audio")]
+    [Tooltip("Max horizontal distance from local player to blob pickup to play collect SFX (you collected it).")]
+    [SerializeField] float pickupSoundRadius = 5f;
+
     private Dictionary<string, PlayerController> _players = new();
     private Dictionary<string, BlobPickupView> _blobs = new();
+    private readonly List<SplitterSpike> _activeSpikes = new List<SplitterSpike>();
 
     void Awake()
     {
@@ -55,20 +69,27 @@ public class GameManager : MonoBehaviour
         {
             if (_blobs.TryGetValue(id, out var view))
             {
-                // Only show floating score if local player is nearby (they collected it)
-                if (Camera.main != null)
-                {
-                    PlayerController localPlayer = null;
-                    foreach (var p in _players.Values)
-                        if (p._isLocal) { localPlayer = p; break; }
+                PlayerController localPlayer = null;
+                foreach (var p in _players.Values)
+                    if (p._isLocal) { localPlayer = p; break; }
 
-                    if (localPlayer != null)
-                    {
-                        // Get the canvas from the local player prefab
-                        var canvas = localPlayer.GetComponentInChildren<Canvas>();
-                        if (canvas != null)
-                            FloatingScore.Spawn(canvas, view.transform.position, (int)blob.value, Camera.main);
-                    }
+                bool nearLocal = localPlayer != null &&
+                    HorizontalDistance(localPlayer.transform.position, view.transform.position) <= pickupSoundRadius;
+
+                // Only show floating score if local player is nearby (they collected it)
+                if (Camera.main != null && nearLocal && localPlayer != null)
+                {
+                    var canvas = localPlayer.GetComponentInChildren<Canvas>();
+                    if (canvas != null)
+                        FloatingScore.Spawn(canvas, view.transform.position, (int)blob.value, Camera.main);
+                }
+
+                if (nearLocal && AudioManager.Instance != null)
+                {
+                    if (blob.isSpecial || blob.isSpeedBoost || blob.isSpeedSlow)
+                        AudioManager.Instance.PlaySpecialItem();
+                    else
+                        AudioManager.Instance.PlayPickupBlob();
                 }
 
                 if (view != null && view.gameObject != null)
@@ -83,8 +104,101 @@ public class GameManager : MonoBehaviour
         room.OnMessage<DiedMessage>("died", (msg) =>
         {
             Debug.Log($"[DEATH] Message received: killedBy={msg.killedBy}, score={msg.finalScore}");
+            AudioManager.Instance?.PlayDeath();
             UIManager.Instance.ShowDeathScreen(msg.killedBy, msg.finalScore);
         });
+
+        SpawnSplitterSpikes();
+    }
+
+    void SpawnSplitterSpikes()
+    {
+        if (splitterSpikePrefab == null) return;
+
+        float margin = 4f;
+        float half = Mathf.Max(5f, splitterSpikeArenaHalfSize - margin);
+        for (int i = 0; i < splitterSpikeCount; i++)
+        {
+            float x = Random.Range(-half, half);
+            float z = Random.Range(-half, half);
+            float s = Random.Range(splitterSpikeScaleMin, splitterSpikeScaleMax);
+            var go = Instantiate(splitterSpikePrefab, new Vector3(x, 0f, z), Quaternion.identity);
+            var spike = go.GetComponent<SplitterSpike>();
+            if (spike != null)
+            {
+                spike.InitializeForArena(new Vector3(s, s, s));
+                _activeSpikes.Add(spike);
+            }
+        }
+    }
+
+    public void NotifySplitterSpikeDestroyed(SplitterSpike spike)
+    {
+        if (spike != null)
+            _activeSpikes.Remove(spike);
+
+        // Keep the spike hazard count stable on this client.
+        TryRespawnSplitterSpikes();
+    }
+
+    void TryRespawnSplitterSpikes()
+    {
+        if (splitterSpikePrefab == null) return;
+
+        int targetCount = Mathf.Max(0, splitterSpikeCount);
+        if (_activeSpikes.Count >= targetCount) return;
+
+        float margin = 4f;
+        float half = Mathf.Max(5f, splitterSpikeArenaHalfSize - margin);
+        int maxTries = 30;
+
+        while (_activeSpikes.Count < targetCount && maxTries-- > 0)
+        {
+            float x = Random.Range(-half, half);
+            float z = Random.Range(-half, half);
+            var pos = new Vector3(x, 0f, z);
+
+            // Don't spawn directly on top of any player.
+            if (IsTooCloseToAnyPlayer(pos, minGap: 1.2f))
+                continue;
+
+            float s = Random.Range(splitterSpikeScaleMin, splitterSpikeScaleMax);
+            var go = Instantiate(splitterSpikePrefab, pos, Quaternion.identity);
+            var sp = go.GetComponent<SplitterSpike>();
+            if (sp == null) continue;
+            sp.InitializeForArena(new Vector3(s, s, s));
+            _activeSpikes.Add(sp);
+        }
+
+        // Fallback: if we couldn't find a safe spot, still restore the count.
+        if (_activeSpikes.Count < targetCount)
+        {
+            float x = Random.Range(-half, half);
+            float z = Random.Range(-half, half);
+            float s = Random.Range(splitterSpikeScaleMin, splitterSpikeScaleMax);
+            var go = Instantiate(splitterSpikePrefab, new Vector3(x, 0f, z), Quaternion.identity);
+            var sp = go.GetComponent<SplitterSpike>();
+            if (sp != null)
+            {
+                sp.InitializeForArena(new Vector3(s, s, s));
+                _activeSpikes.Add(sp);
+            }
+        }
+    }
+
+    bool IsTooCloseToAnyPlayer(Vector3 spikePosXZ, float minGap)
+    {
+        foreach (var p in _players.Values)
+        {
+            if (p == null) continue;
+            float pr = Mathf.Max(p.transform.localScale.x, p.transform.localScale.z) * 0.5f;
+            pr = Mathf.Max(0.25f, pr);
+
+            float dist = HorizontalDistance(p.transform.position, spikePosXZ);
+            if (dist < (pr + minGap))
+                return true;
+        }
+        return false;
     }
 
     public bool TryGetPlayer(string sessionId, out PlayerController controller)
@@ -119,6 +233,13 @@ public class GameManager : MonoBehaviour
         var view = go.GetComponent<BlobPickupView>();
         view.Init(blob);
         _blobs[id] = view;
+    }
+
+    static float HorizontalDistance(Vector3 a, Vector3 b)
+    {
+        float dx = a.x - b.x;
+        float dz = a.z - b.z;
+        return Mathf.Sqrt(dx * dx + dz * dz);
     }
 }
 

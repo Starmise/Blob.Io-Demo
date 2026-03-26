@@ -20,7 +20,6 @@ public class LobbyManager : MonoBehaviour
     public InputField nameInput;
 
     private bool _settingsOpen = false;
-    private bool _muted = false;
     private bool _starting = false;
 
     void Start()
@@ -32,9 +31,22 @@ public class LobbyManager : MonoBehaviour
 
         btnSettings.onClick.AddListener(ToggleSettings);
 
-        btnMusicMute.onClick.AddListener(ToggleMute);
-        btnMute.onClick.AddListener(ToggleMute);
+        // Sound_btn = master (music + SFX). Music_btn = music only.
+        btnMute.onClick.AddListener(ToggleAllSound);
+        btnMusicMute.onClick.AddListener(ToggleMusicOnly);
 
+        // Precompute lobby preview values so the lobby player can show them.
+        // This must match what StartGame() will use.
+        if (NetworkManager.Instance != null)
+        {
+            string enteredName = nameInput != null ? nameInput.text.Trim() : "";
+            if (string.IsNullOrEmpty(enteredName))
+                NetworkManager.Instance.LocalPlayerName = $"blob{Random.Range(100, 9999)}";
+            else
+                NetworkManager.Instance.LocalPlayerName = enteredName;
+
+            NetworkManager.Instance.LocalSkinId = PlayerPrefs.GetString("SelectedSkin", "default");
+        }
 
         StartCoroutine(BlinkPrompt());
     }
@@ -67,10 +79,16 @@ public class LobbyManager : MonoBehaviour
         settingsPanel.SetActive(_settingsOpen);
     }
 
-    void ToggleMute()
+    void ToggleAllSound()
     {
-        _muted = !_muted;
-        AudioListener.volume = _muted ? 0f : 1f;
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.ToggleSound();
+    }
+
+    void ToggleMusicOnly()
+    {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.ToggleMusic();
     }
 
     async void StartGame()
@@ -78,15 +96,14 @@ public class LobbyManager : MonoBehaviour
         _starting = true;
         txtStartPrompt.text = "Connecting...";
 
-        // Asign random name automatically if it wasn't sellected manually
-        int randomId = Random.Range(100, 9999);
+        // Assign name only if the user entered one; otherwise keep the precomputed lobby value.
         string enteredName = nameInput != null ? nameInput.text.Trim() : "";
-        NetworkManager.Instance.LocalPlayerName =
-            string.IsNullOrEmpty(enteredName) ? $"blob{Random.Range(100, 9999)}" : enteredName;
+        if (!string.IsNullOrEmpty(enteredName))
+            NetworkManager.Instance.LocalPlayerName = enteredName;
 
         // Load saved skin, fallback to default
-        string savedSkin = PlayerPrefs.GetString("SelectedSkin", "default");
-        NetworkManager.Instance.LocalSkinId = savedSkin;
+        NetworkManager.Instance.LocalSkinId =
+            PlayerPrefs.GetString("SelectedSkin", "default");
 
         await NetworkManager.Instance.JoinGame();
     }

@@ -46,7 +46,7 @@ public class GameUI : MonoBehaviour
 
         if (local == null) return;
 
-        txtScore.text = $"{PlayerController.FormatNumber(local.score)}";
+        txtScore.text = $"{PlayerController.FormatNumber(PlayerController.GetTotalDisplayedScore(local))}";
         txtKills.text = $"{local.kills}";
     }
 
@@ -55,18 +55,21 @@ public class GameUI : MonoBehaviour
         var room = NetworkManager.Instance.Room;
         var localId = room.SessionId;
 
-        // Organize players by score (include dead players so leaderboard stays visible when dead)
+        // Organize players by score.
+        // Do not show consumed/retired players; keep local visible even if they're dead.
         var sorted = new List<(string id, PlayerState state)>();
         room.State.players.ForEach((sessionId, state) =>
         {
+            if (!state.isAlive && sessionId != localId)
+                return;
             sorted.Add((sessionId, state));
         });
-        sorted = sorted.OrderByDescending(p => p.state.score).ToList();
+        sorted = sorted.OrderByDescending(p => PlayerController.GetTotalDisplayedScore(p.state)).ToList();
 
         int localRank = sorted.FindIndex(p => p.id == localId);
         if (localRank < 0) return;
 
-        // Show the four closest players to the local player
+        // Show the five players around the local player (including them).
         int start;
         if (localRank == 0) start = 0;
         else if (localRank == 1) start = 0;
@@ -91,7 +94,7 @@ public class GameUI : MonoBehaviour
             var txt = go.GetComponentInChildren<Text>();
             int rank = start + i + 1;
 
-            txt.text = $"{rank}. {p.state.name}  {PlayerController.FormatNumber(p.state.score)}";
+            txt.text = $"{rank}. {p.state.name}  {PlayerController.FormatNumber(PlayerController.GetTotalDisplayedScore(p.state))}";
 
             // highlight local player
             if (p.id == localId)

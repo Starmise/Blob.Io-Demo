@@ -1,6 +1,17 @@
 using Colyseus.Schema;
 
 /// <summary>
+/// One extra mass cell (primary stays on PlayerState x/z/score/size).
+/// </summary>
+public partial class SplitCell : Schema
+{
+    [Type(0, "float32")] public float x = default;
+    [Type(1, "float32")] public float z = default;
+    [Type(2, "int32")] public int score = default;
+    [Type(3, "float32")] public float size = default;
+}
+
+/// <summary>
 /// Player state schema that defines the properties of a player in the game. This is used by
 /// Colyseus to synchronize the player state between the server and clients. Each property has a type and an index, 
 /// which is used for efficient serialization.The GameState class contains a map of player states and blob pickups, 
@@ -21,6 +32,10 @@ public partial class PlayerState : Schema
     [Type(10, "boolean")] public bool isInvincible = default;
     [Type(11, "float32")] public float invincibilityEndTime = default;
     [Type(12, "string")] public string skinId = default;
+    [Type(13, "boolean")] public bool speedBoostActive = default;
+    [Type(14, "boolean")] public bool speedSlowActive = default;
+    [Type(15, "array", typeof(ArraySchema<SplitCell>))]
+    public ArraySchema<SplitCell> splitCells = new ArraySchema<SplitCell>();
 }
 
 /// <summary>
@@ -34,6 +49,9 @@ public partial class BlobPickup : Schema
     [Type(2, "float32")] public float z = default;
     [Type(3, "float32")] public float value = default;
     [Type(4, "boolean")] public bool isSpecial = default;
+    [Type(5, "string")] public string color = default;
+    [Type(6, "boolean")] public bool isSpeedBoost = default;
+    [Type(7, "boolean")] public bool isSpeedSlow = default;
 }
 
 /// <summary>

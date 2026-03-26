@@ -106,4 +106,10 @@ public class NetworkManager : MonoBehaviour
         // Send a "move" message to the server with the desired movement direction.
         Room?.Send("move", new { x, z });
     }
+
+    /// <summary>Request Agar-style split; copy launches along (dirX, dirZ) on XZ.</summary>
+    public void SendSplit(float dirX, float dirZ)
+    {
+        Room?.Send("split", new { x = dirX, z = dirZ });
+    }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,22 +10,132 @@ using UnityEngine.UI;
 /// </summary>
 public class PlayerController : MonoBehaviour
 {
+    /// <summary>Max extra masses (matches server MAX_SPLIT_EXTRAS).</summary>
+    public const int MaxSplitExtras = 4;
+
     [Header("References")]
     public MeshRenderer bodyRenderer;
     public Text nameLabel;
     public Text scoreLabel;
     public GameObject invincibilityEffect;
+    [Tooltip("Shield visual diameter vs player horizontal scale (max of X/Z).")]
+    [SerializeField] float invincibilityShieldScaleFactor = 1.3f;
+    [Header("Shadow")]
+    [Tooltip("Child that follows blob size on X/Z; leave empty to auto-find \"shadow\".")]
+    [SerializeField] public Transform shadowTransform;
+    [Tooltip("World X/Z size = blob horizontal radius scale (ignores Y breathing).")]
+    [SerializeField] float shadowWorldXZMultiplier = 1f;
+    [Tooltip("World Y size = blob horizontal scale (set small for a flat decal).")]
+    [SerializeField] float shadowWorldYMultiplier = 1f;
+    [Header("Speed boost / slow VFX")]
+    [Tooltip("Assign VFX_Speedlines prefab. Shown while server reports speedBoostActive (opposite to facing).")]
+    public GameObject speedLinesVfxPrefab;
+    public GameObject speedLinesRedVfxPrefab;
+    [SerializeField] float speedLinesToBlobScaleRatio = 0.3f;
     public OrbitCamera orbitCamera;
     public bool _isLocal;
 
     private string _sessionId;
     private PlayerState _state;
     private Vector3 _targetPos;
+    private GameObject _speedLinesInstance;
+    private GameObject _speedLinesRedInstance;
+    private Vector3 _lastMoveDirXZ = Vector3.forward;
+    private Vector3 _lastStatePosXZ;
+    private Vector3 _remoteFacingXZ = Vector3.forward;
 
     [Header("Skin")]
     public SkinDatabase skinDatabase;
 
     private string _currentSkinId = "";
+    private int _lastKills;
+    private int _lastTotalScore;
+    private int _lastSplitCellCountForSfx;
+    private Vector3 _shadowBaseLocalScale = Vector3.one;
+    private static readonly int FaceDirOSId = Shader.PropertyToID("_FaceDirOS");
+    private MaterialPropertyBlock _bodyFaceMpb;
+    private readonly List<MaterialPropertyBlock> _splitFaceMpbs = new List<MaterialPropertyBlock>();
+    /// <summary>Visual-only extra masses (mesh + labels). Never duplicate the player root — it includes Camera and PlayerController.</summary>
+    private readonly List<GameObject> _splitCloneRoots = new List<GameObject>();
+    private readonly List<MeshRenderer> _splitCloneMeshRenderers = new List<MeshRenderer>();
+    private readonly List<Text> _cloneNameLabels = new List<Text>();
+    private readonly List<Text> _cloneScoreLabels = new List<Text>();
+    private readonly List<Transform> _splitCloneShadowTransforms = new List<Transform>();
+    private readonly List<Vector3> _splitCloneShadowBaseLocalScales = new List<Vector3>();
+
+    /// <summary>Combined mass score (leaderboard / leader checks).</summary>
+    public static int GetTotalDisplayedScore(PlayerState s)
+    {
+        if (s == null) return 0;
+        int t = s.score;
+        if (s.splitCells != null)
+        {
+            for (int i = 0; i < s.splitCells.Count; i++)
+                t += s.splitCells[i].score;
+        }
+        return t;
+    }
+
+    /// <summary>Largest single cell score (server uses this to pick split source).</summary>
+    public static int GetMaxCellScore(PlayerState s)
+    {
+        if (s == null) return 0;
+        int m = s.score;
+        if (s.splitCells != null)
+        {
+            for (int i = 0; i < s.splitCells.Count; i++)
+            {
+                int sc = s.splitCells[i].score;
+                if (sc > m) m = sc;
+            }
+        }
+        return m;
+    }
+
+    /// <summary>Whether another split action is allowed (mirrors server rules).</summary>
+    public static bool CanSplitMore(PlayerState s)
+    {
+        if (s == null) return false;
+        if (s.splitCells != null && s.splitCells.Count >= MaxSplitExtras) return false;
+        return GetMaxCellScore(s) >= 2;
+    }
+
+    public int SplitCloneCount => _splitCloneRoots.Count;
+
+    public Transform GetSplitCloneRoot(int index)
+    {
+        if (index < 0 || index >= _splitCloneRoots.Count) return null;
+        var go = _splitCloneRoots[index];
+        return go != null ? go.transform : null;
+    }
+
+    void Awake()
+    {
+        ResolveShadowReferenceIfNeeded();
+    }
+
+    void Start()
+    {
+        // Lobby preview responsibility is delegated to PlayerLobby.
+        if (NetworkManager.Instance != null && !NetworkManager.Instance.IsInGame)
+        {
+            var lobby = GetComponent<PlayerLobby>();
+            if (lobby == null)
+                lobby = gameObject.AddComponent<PlayerLobby>();
+            lobby.SetupLobbyPreview();
+        }
+    }
+
+    void ResolveShadowReferenceIfNeeded()
+    {
+        if (shadowTransform == null)
+        {
+            var t = transform.Find("shadow");
+            if (t != null) shadowTransform = t;
+        }
+        if (shadowTransform != null)
+            _shadowBaseLocalScale = shadowTransform.localScale;
+    }
 
     /// <summary>
     /// Initializes the player controller with the given session ID, player state,
@@ -36,6 +147,7 @@ public class PlayerController : MonoBehaviour
         _state = state;
         _isLocal = isLocal;
         _targetPos = new Vector3(state.x, state.y, state.z);
+        _lastStatePosXZ = new Vector3(state.x, 0f, state.z);
         // _deathHandled = false;
 
         // For fallback
@@ -48,6 +160,14 @@ public class PlayerController : MonoBehaviour
 
         if (orbitCamera != null)
             orbitCamera.Setup(transform, isLocal);
+
+        SetupInvincibilityShieldInstance();
+        SetupSpeedLinesVfxInstance();
+        SetupSpeedLinesRedVfxInstance();
+
+        _lastKills = state.kills;
+        _lastTotalScore = GetTotalDisplayedScore(state);
+        _lastSplitCellCountForSfx = state.splitCells != null ? state.splitCells.Count : 0;
 
         /* I learned that in Colyseus 0.17, instead of using OnChange callbacks for state changes, we can just read
          the updated state directly in the Update method. The state object is automatically updated with the latest 
@@ -63,14 +183,243 @@ public class PlayerController : MonoBehaviour
         if (_isLocal)
         {
             HandleInput();
+            DetectEatPlayerSfx();
+            DetectSplitMergeSfx();
             // CheckLocalDeath();
         }
 
         // Update transform and visuals based on the latest synchronized state
         UpdateTransform();
+        UpdateSplitCloneVisual();
+        UpdateRemoteFacingFromState();
         UpdateVisualState();
+        UpdateFaceOverlayDirection();
         UpdateLabels();
         BillboardLabels();
+    }
+
+    void OnDestroy()
+    {
+        DestroyAllSplitClones();
+    }
+
+    void DestroyAllSplitClones()
+    {
+        for (int i = 0; i < _splitCloneRoots.Count; i++)
+        {
+            if (_splitCloneRoots[i] != null)
+                Destroy(_splitCloneRoots[i]);
+        }
+        _splitCloneRoots.Clear();
+        _splitCloneMeshRenderers.Clear();
+        _cloneNameLabels.Clear();
+        _cloneScoreLabels.Clear();
+        _splitCloneShadowTransforms.Clear();
+        _splitCloneShadowBaseLocalScales.Clear();
+        _splitFaceMpbs.Clear();
+    }
+
+    /// <summary>
+    /// Kills from eating a player increase score and kills; gift kills add kills without score.
+    /// </summary>
+    void DetectEatPlayerSfx()
+    {
+        int total = GetTotalDisplayedScore(_state);
+        if (_state.kills > _lastKills && total > _lastTotalScore)
+            AudioManager.Instance?.PlayEatPlayer();
+        _lastKills = _state.kills;
+        _lastTotalScore = total;
+    }
+
+    void DetectSplitMergeSfx()
+    {
+        if (_state == null) return;
+        int currentCount = _state.splitCells != null ? _state.splitCells.Count : 0;
+        if (currentCount > _lastSplitCellCountForSfx)
+            AudioManager.Instance?.PlaySplit();
+        else if (currentCount < _lastSplitCellCountForSfx)
+            AudioManager.Instance?.PlayMerge();
+        _lastSplitCellCountForSfx = currentCount;
+    }
+
+    void LateUpdate()
+    {
+        UpdateInvincibilityShieldScale();
+        UpdateSpeedLinesVfx();
+        UpdateShadowScale();
+        UpdateSplitCloneShadowScale();
+    }
+
+    /// <summary>
+    /// If the inspector references the shield prefab asset (not a child), instantiate it under the player.
+    /// Keeps Z = 90 degrees and centers on the blob so it tracks growth.
+    /// </summary>
+    void SetupInvincibilityShieldInstance()
+    {
+        if (invincibilityEffect == null) return;
+
+        if (invincibilityEffect.transform.parent != transform)
+        {
+            invincibilityEffect = Instantiate(invincibilityEffect, transform);
+            invincibilityEffect.name = "InvincibilityShield";
+        }
+
+        invincibilityEffect.transform.localPosition = Vector3.zero;
+        invincibilityEffect.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+    }
+
+    /// <summary>
+    /// Player scale is non-uniform (breathing on Y). Set shield local scale so world scale stays uniform
+    /// at <see cref="invincibilityShieldScaleFactor"/> horizontal player size.
+    /// </summary>
+    void UpdateInvincibilityShieldScale()
+    {
+        if (_state == null || invincibilityEffect == null) return;
+        if (!_state.isInvincible || !invincibilityEffect.activeInHierarchy) return;
+
+        Vector3 s = transform.localScale;
+        float w = invincibilityShieldScaleFactor * Mathf.Max(s.x, s.z);
+        if (w <= 1e-4f) return;
+
+        invincibilityEffect.transform.localScale = new Vector3(w / s.x, w / s.y, w / s.z);
+    }
+
+    /// <summary>
+    /// Blob scale is (t, t�breathe, t). Drive shadow world X/Z from t only; cancel breathe on Y so the shadow does not pulse.
+    /// </summary>
+    void UpdateShadowScale()
+    {
+        if (shadowTransform == null) return;
+
+        Vector3 s = transform.localScale;
+        float sx = s.x;
+        float sz = s.z;
+        if (sx <= 1e-4f || sz <= 1e-4f) return;
+
+        float horiz = Mathf.Max(sx, sz);
+        float worldXZ = shadowWorldXZMultiplier * horiz;
+        float worldY = shadowWorldYMultiplier * horiz;
+
+        var comp = new Vector3(
+            worldXZ / sx,
+            worldY / s.y,
+            worldXZ / sz);
+        shadowTransform.localScale = new Vector3(
+            _shadowBaseLocalScale.x * comp.x,
+            _shadowBaseLocalScale.y * comp.y,
+            _shadowBaseLocalScale.z * comp.z);
+    }
+
+    void UpdateSplitCloneShadowScale()
+    {
+        for (int i = 0; i < _splitCloneRoots.Count; i++)
+        {
+            var root = _splitCloneRoots[i];
+            if (root == null || i >= _splitCloneShadowTransforms.Count) continue;
+            var st = _splitCloneShadowTransforms[i];
+            if (st == null) continue;
+
+            Vector3 s = root.transform.localScale;
+            float sx = s.x;
+            float sz = s.z;
+            if (sx <= 1e-4f || sz <= 1e-4f) continue;
+
+            float horiz = Mathf.Max(sx, sz);
+            float worldXZ = shadowWorldXZMultiplier * horiz;
+            float worldY = shadowWorldYMultiplier * horiz;
+
+            var comp = new Vector3(
+                worldXZ / sx,
+                worldY / s.y,
+                worldXZ / sz);
+            Vector3 baseScale = i < _splitCloneShadowBaseLocalScales.Count
+                ? _splitCloneShadowBaseLocalScales[i]
+                : Vector3.one;
+            st.localScale = new Vector3(
+                baseScale.x * comp.x,
+                baseScale.y * comp.y,
+                baseScale.z * comp.z);
+        }
+    }
+
+    void SetupSpeedLinesVfxInstance()
+    {
+        if (speedLinesVfxPrefab == null) return;
+
+        if (_speedLinesInstance == null || _speedLinesInstance.transform.parent != transform)
+        {
+            _speedLinesInstance = Instantiate(speedLinesVfxPrefab, transform);
+            _speedLinesInstance.name = "VFX_Speedlines";
+        }
+
+        _speedLinesInstance.transform.localPosition = Vector3.zero;
+        _speedLinesInstance.SetActive(false);
+    }
+
+    void SetupSpeedLinesRedVfxInstance()
+    {
+        if (speedLinesRedVfxPrefab == null) return;
+
+        if (_speedLinesRedInstance == null || _speedLinesRedInstance.transform.parent != transform)
+        {
+            _speedLinesRedInstance = Instantiate(speedLinesRedVfxPrefab, transform);
+            _speedLinesRedInstance.name = "VFX_SpeedlinesRed";
+        }
+
+        _speedLinesRedInstance.transform.localPosition = Vector3.zero;
+        _speedLinesRedInstance.SetActive(false);
+    }
+
+    void UpdateRemoteFacingFromState()
+    {
+        if (_isLocal || _state == null) return;
+
+        Vector3 cur = new Vector3(_state.x, 0f, _state.z);
+        Vector3 delta = cur - _lastStatePosXZ;
+        _lastStatePosXZ = cur;
+        if (delta.sqrMagnitude > 1e-6f)
+            _remoteFacingXZ = delta.normalized;
+    }
+
+    void UpdateSpeedLinesVfx()
+    {
+        if (_state == null) return;
+
+        Vector3 face = GetFacingDirXZ();
+        float yawDeg = Mathf.Atan2(face.x, face.z) * Mathf.Rad2Deg;
+
+        UpdateOneSpeedLineVfx(
+            _speedLinesInstance,
+            _state.speedBoostActive,
+            yawDeg + 180f);
+        UpdateOneSpeedLineVfx(
+            _speedLinesRedInstance,
+            _state.speedSlowActive,
+            yawDeg);
+    }
+
+    void UpdateOneSpeedLineVfx(GameObject instance, bool show, float yawYDegrees)
+    {
+        if (instance == null) return;
+        if (instance.activeSelf != show)
+            instance.SetActive(show);
+        if (!show) return;
+
+        Vector3 s = transform.localScale;
+        float blobScale = Mathf.Max(s.x, s.z);
+        float worldVfxUniform = blobScale * speedLinesToBlobScaleRatio;
+        instance.transform.localScale = new Vector3(
+            worldVfxUniform / s.x,
+            worldVfxUniform / s.y,
+            worldVfxUniform / s.z);
+        instance.transform.localRotation = Quaternion.Euler(0f, yawYDegrees, 0f);
+    }
+
+    Vector3 GetFacingDirXZ()
+    {
+        if (_isLocal)
+            return _lastMoveDirXZ.sqrMagnitude > 1e-6f ? _lastMoveDirXZ : Vector3.forward;
+        return _remoteFacingXZ.sqrMagnitude > 1e-6f ? _remoteFacingXZ : Vector3.forward;
     }
 
     /// <summary>
@@ -86,20 +435,193 @@ public class PlayerController : MonoBehaviour
             _targetPos,
             Time.deltaTime * 15f);
 
-        const float MAX_SCORE = 50000f;
-        const float MIN_SCALE = 1f;
-        const float MAX_SCALE = 10f;
-
-        float t = Mathf.Clamp01((float)_state.score / MAX_SCORE);
-        float targetScale = Mathf.Lerp(MIN_SCALE, MAX_SCALE, t);
-
-        // Breathing animation � subtle Y squish using a sine wave
+        float targetScale = GetTargetScaleForScore(_state.score);
         float breathe = 1f + Mathf.Sin(Time.time * 2f) * 0.1f;
 
         transform.localScale = Vector3.Lerp(
             transform.localScale,
             new Vector3(targetScale, targetScale * breathe, targetScale),
             Time.deltaTime * 5f);
+    }
+
+    /// <summary>Visual radius scale from mass score (matches server MAX_SCORE_FOR_SCALE curve).</summary>
+    static float GetTargetScaleForScore(int score)
+    {
+        const float MAX_SCORE = 200000f;
+        const float MIN_SCALE = 1f;
+        const float MAX_SCALE = 10f;
+        float t = Mathf.Clamp01((float)score / MAX_SCORE);
+        return Mathf.Lerp(MIN_SCALE, MAX_SCALE, t);
+    }
+
+    /// <summary>Builds one extra-mass clone: mesh + shadow + duplicated world Canvas (no camera, no controls).</summary>
+    void BuildOneSplitClone()
+    {
+        if (bodyRenderer == null) return;
+
+        ResolveShadowReferenceIfNeeded();
+
+        var root = new GameObject("SplitClone");
+        root.transform.SetParent(transform.parent);
+        // Spawn from the current blob pose so the clone appears to split out of it,
+        // instead of lerping in from world origin.
+        root.transform.position = transform.position;
+        root.transform.localScale = transform.localScale;
+        _splitCloneRoots.Add(root);
+
+        var meshGo = new GameObject("BlobMesh");
+        meshGo.transform.SetParent(root.transform, false);
+        var mf = meshGo.AddComponent<MeshFilter>();
+        var mr = meshGo.AddComponent<MeshRenderer>();
+        _splitCloneMeshRenderers.Add(mr);
+        _splitFaceMpbs.Add(new MaterialPropertyBlock());
+        var srcMf = bodyRenderer.GetComponent<MeshFilter>();
+        if (srcMf != null)
+            mf.sharedMesh = srcMf.sharedMesh;
+        mr.sharedMaterial = bodyRenderer.sharedMaterial;
+
+        Transform splitShadow = null;
+        if (shadowTransform != null)
+        {
+            var sh = Instantiate(shadowTransform.gameObject, root.transform);
+            sh.name = "shadow";
+            sh.SetActive(true);
+            splitShadow = sh.transform;
+        }
+        _splitCloneShadowTransforms.Add(splitShadow);
+        _splitCloneShadowBaseLocalScales.Add(
+            splitShadow != null ? splitShadow.localScale : Vector3.one);
+
+        meshGo.transform.SetSiblingIndex(bodyRenderer.transform.GetSiblingIndex());
+        if (splitShadow != null && shadowTransform != null)
+            splitShadow.SetSiblingIndex(shadowTransform.GetSiblingIndex());
+
+        Text nameT = null;
+        Text scoreT = null;
+        var srcCanvas = transform.Find("Canvas");
+        if (srcCanvas != null)
+        {
+            var canvasGo = Instantiate(srcCanvas.gameObject, root.transform);
+            canvasGo.name = "Canvas";
+            var srcRt = srcCanvas.GetComponent<RectTransform>();
+            var dstRt = canvasGo.GetComponent<RectTransform>();
+            if (srcRt != null && dstRt != null)
+            {
+                dstRt.localPosition = srcRt.localPosition;
+                dstRt.localRotation = srcRt.localRotation;
+                dstRt.localScale = srcRt.localScale;
+            }
+
+            var canvas = canvasGo.GetComponent<Canvas>();
+            if (canvas != null && Camera.main != null)
+                canvas.worldCamera = Camera.main;
+
+            var raycaster = canvasGo.GetComponent<GraphicRaycaster>();
+            if (raycaster != null)
+                raycaster.enabled = false;
+
+            var texts = canvasGo.GetComponentsInChildren<Text>(true);
+            if (texts.Length > 0) nameT = texts[0];
+            if (texts.Length > 1) scoreT = texts[1];
+        }
+        _cloneNameLabels.Add(nameT);
+        _cloneScoreLabels.Add(scoreT);
+    }
+
+    void SyncSplitCloneHierarchy(int requiredCount)
+    {
+        while (_splitCloneRoots.Count > requiredCount)
+        {
+            int last = _splitCloneRoots.Count - 1;
+            if (_splitCloneRoots[last] != null)
+                Destroy(_splitCloneRoots[last]);
+            _splitCloneRoots.RemoveAt(last);
+            _splitCloneMeshRenderers.RemoveAt(last);
+            _cloneNameLabels.RemoveAt(last);
+            _cloneScoreLabels.RemoveAt(last);
+            _splitCloneShadowTransforms.RemoveAt(last);
+            _splitCloneShadowBaseLocalScales.RemoveAt(last);
+            _splitFaceMpbs.RemoveAt(last);
+        }
+        while (_splitCloneRoots.Count < requiredCount)
+            BuildOneSplitClone();
+    }
+
+    void UpdateSplitCloneVisual()
+    {
+        if (_state == null || bodyRenderer == null) return;
+
+        int n = _state.splitCells != null ? _state.splitCells.Count : 0;
+        if (n == 0)
+        {
+            if (_splitCloneRoots.Count > 0)
+                DestroyAllSplitClones();
+            return;
+        }
+
+        SyncSplitCloneHierarchy(n);
+
+        const float posLerp = 15f;
+        const float scaleLerp = 12f;
+        for (int i = 0; i < n; i++)
+        {
+            var cell = _state.splitCells[i];
+            var root = _splitCloneRoots[i];
+            if (root == null) continue;
+
+            Vector3 cloneTargetPos = new Vector3(cell.x, _state.y, cell.z);
+            root.transform.position = Vector3.Lerp(
+                root.transform.position,
+                cloneTargetPos,
+                Time.deltaTime * posLerp);
+            float targetScale = GetTargetScaleForScore(cell.score);
+            float breathe = 1f + Mathf.Sin(Time.time * 2f) * 0.1f;
+            root.transform.localScale = Vector3.Lerp(
+                root.transform.localScale,
+                new Vector3(targetScale, targetScale * breathe, targetScale),
+                Time.deltaTime * scaleLerp);
+        }
+    }
+
+    Vector3 GetSplitLaunchDirection()
+    {
+        if (_lastMoveDirXZ.sqrMagnitude > 1e-6f)
+            return _lastMoveDirXZ;
+        if (Camera.main != null)
+        {
+            var f = Vector3.ProjectOnPlane(Camera.main.transform.forward, Vector3.up).normalized;
+            if (f.sqrMagnitude > 1e-6f)
+                return f;
+        }
+        return Vector3.forward;
+    }
+
+    /// <summary>
+    /// SplitterSpike: same rules as manual split (E). <paramref name="launchDirWorldXZ"/> should be a world XZ direction (e.g. away from the spike).
+    /// </summary>
+    public bool TryRequestSplitFromSpike(Vector3 launchDirWorldXZ)
+    {
+        if (!_isLocal || _state == null || NetworkManager.Instance == null) return false;
+        if (!CanSplitMore(_state)) return false;
+
+        Vector3 d = new Vector3(launchDirWorldXZ.x, 0f, launchDirWorldXZ.z);
+        if (d.sqrMagnitude < 1e-6f)
+            d = GetSplitLaunchDirection();
+        else
+            d.Normalize();
+
+        NetworkManager.Instance.SendSplit(d.x, d.z);
+        return true;
+    }
+
+    /// <summary>Same as keyboard E — used by mobile Split button.</summary>
+    public bool TryManualSplit()
+    {
+        if (!_isLocal || _state == null || NetworkManager.Instance == null) return false;
+        if (!CanSplitMore(_state)) return false;
+        Vector3 launch = GetSplitLaunchDirection();
+        NetworkManager.Instance.SendSplit(launch.x, launch.z);
+        return true;
     }
 
     /// <summary>
@@ -112,6 +634,15 @@ public class PlayerController : MonoBehaviour
 
         if (scoreLabel != null)
             scoreLabel.text = FormatNumber(_state.score);
+
+        int n = _state.splitCells != null ? _state.splitCells.Count : 0;
+        for (int i = 0; i < n && i < _cloneNameLabels.Count; i++)
+        {
+            if (_cloneNameLabels[i] != null)
+                _cloneNameLabels[i].text = _state.name;
+            if (i < _cloneScoreLabels.Count && _cloneScoreLabels[i] != null)
+                _cloneScoreLabels[i].text = FormatNumber(_state.splitCells[i].score);
+        }
     }
 
     /// <summary>
@@ -132,6 +663,21 @@ public class PlayerController : MonoBehaviour
             scoreLabel.transform.LookAt(
                 scoreLabel.transform.position + cam.rotation * Vector3.forward,
                 cam.rotation * Vector3.up);
+
+        for (int i = 0; i < _cloneNameLabels.Count; i++)
+        {
+            if (_cloneNameLabels[i] != null)
+                _cloneNameLabels[i].transform.LookAt(
+                    _cloneNameLabels[i].transform.position + cam.rotation * Vector3.forward,
+                    cam.rotation * Vector3.up);
+        }
+        for (int i = 0; i < _cloneScoreLabels.Count; i++)
+        {
+            if (_cloneScoreLabels[i] != null)
+                _cloneScoreLabels[i].transform.LookAt(
+                    _cloneScoreLabels[i].transform.position + cam.rotation * Vector3.forward,
+                    cam.rotation * Vector3.up);
+        }
     }
 
     /// <summary>
@@ -140,16 +686,30 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     void UpdateVisualState()
     {
+        SkinDatabase.SkinEntry skinEntry = null;
+
         // Update skin material using skinId when itchanges
         if (!string.IsNullOrEmpty(_state.skinId) && _state.skinId != _currentSkinId)
         {
             _currentSkinId = _state.skinId;
             if (skinDatabase != null)
             {
-                var mat = skinDatabase.GetMaterial(_currentSkinId);
+                skinEntry = skinDatabase.GetSkin(_currentSkinId);
+                var mat = skinEntry != null ? skinEntry.material : null;
                 if (mat != null)
+                {
                     bodyRenderer.material = mat;
+                    for (int i = 0; i < _splitCloneMeshRenderers.Count; i++)
+                    {
+                        if (_splitCloneMeshRenderers[i] != null)
+                            _splitCloneMeshRenderers[i].material = mat;
+                    }
+                }
             }
+        }
+        else if (skinDatabase != null && !string.IsNullOrEmpty(_currentSkinId))
+        {
+            skinEntry = skinDatabase.GetSkin(_currentSkinId);
         }
 
         if (invincibilityEffect != null)
@@ -157,6 +717,65 @@ public class PlayerController : MonoBehaviour
 
         if (!_isLocal)
             gameObject.SetActive(_state.isAlive);
+
+        bool showSplits = _state.isAlive && _state.splitCells != null && _state.splitCells.Count > 0;
+        for (int i = 0; i < _splitCloneRoots.Count; i++)
+        {
+            if (_splitCloneRoots[i] != null)
+                _splitCloneRoots[i].SetActive(showSplits);
+        }
+    }
+
+    void UpdateFaceOverlayDirection()
+    {
+        Vector3 faceDirWS = GetFacingDirXZ();
+        if (faceDirWS.sqrMagnitude <= 1e-6f)
+            faceDirWS = Vector3.forward;
+
+        ApplyFaceDirToRenderer(bodyRenderer, transform, faceDirWS, ref _bodyFaceMpb);
+
+        int n = Mathf.Min(_splitCloneMeshRenderers.Count, _splitCloneRoots.Count);
+        for (int i = 0; i < n; i++)
+        {
+            var mr = _splitCloneMeshRenderers[i];
+            var root = _splitCloneRoots[i];
+            if (mr == null || root == null) continue;
+
+            var block = _splitFaceMpbs[i];
+            if (block == null)
+            {
+                block = new MaterialPropertyBlock();
+                _splitFaceMpbs[i] = block;
+            }
+
+            Vector3 dirWS = faceDirWS;
+            dirWS.y = 0f;
+            if (dirWS.sqrMagnitude <= 1e-6f) dirWS = Vector3.forward;
+            else dirWS.Normalize();
+
+            block.Clear();
+            block.SetVector(FaceDirOSId, new Vector4(dirWS.x, 0f, dirWS.z, 0f));
+            mr.SetPropertyBlock(block);
+        }
+    }
+
+    void ApplyFaceDirToRenderer(
+        MeshRenderer renderer,
+        Transform owner,
+        Vector3 faceDirWS,
+        ref MaterialPropertyBlock block)
+    {
+        if (renderer == null || owner == null) return;
+        if (block == null) block = new MaterialPropertyBlock();
+
+        Vector3 dirWS = faceDirWS;
+        dirWS.y = 0f;
+        if (dirWS.sqrMagnitude <= 1e-6f) dirWS = Vector3.forward;
+        else dirWS.Normalize();
+
+        block.Clear();
+        block.SetVector(FaceDirOSId, new Vector4(dirWS.x, 0f, dirWS.z, 0f));
+        renderer.SetPropertyBlock(block);
     }
 
     /// <summary>
@@ -167,18 +786,30 @@ public class PlayerController : MonoBehaviour
     {
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
-
-        if (Mathf.Abs(h) < 0.01f && Mathf.Abs(v) < 0.01f)
-            return;
+        if (MobileMoveInput.IsAxisActive)
+        {
+            h = MobileMoveInput.Axis.x;
+            v = MobileMoveInput.Axis.y;
+        }
 
         // Relative direction based on camera orientation
-        var cam = Camera.main.transform;
+        var cam = Camera.main != null ? Camera.main.transform : transform;
         var forward = Vector3.ProjectOnPlane(cam.forward, Vector3.up).normalized;
         var right = Vector3.ProjectOnPlane(cam.right, Vector3.up).normalized;
 
         var dir = forward * v + right * h;
+        if (dir.sqrMagnitude > 1e-6f)
+            _lastMoveDirXZ = new Vector3(dir.x, 0f, dir.z).normalized;
 
-        // Send movement to server
+        if (Input.GetKeyDown(KeyCode.E) && CanSplitMore(_state) && NetworkManager.Instance != null)
+        {
+            Vector3 launch = GetSplitLaunchDirection();
+            NetworkManager.Instance.SendSplit(launch.x, launch.z);
+        }
+
+        if (Mathf.Abs(h) < 0.01f && Mathf.Abs(v) < 0.01f)
+            return;
+
         NetworkManager.Instance.SendMove(dir.x, dir.z);
     }
 
